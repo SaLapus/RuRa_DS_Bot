@@ -185,11 +185,11 @@ function parseVolInfo(VolumeInfo: RequestData): ProjInfo {
       for (let p of anArray) {
         const str = p.match(/<p id="p\d">(.+)<\/p>/);
 
-        if (str && annotationText.length < 800 && str[1].length < 100) {
-          console.log("ANNOTATION #", ++i, ": ", p[1]);
-          console.log("LENGTH: ", p[1].length);
-          
-          annotationText += p[1] + "\n";
+        if (str && annotationText.length < 800) {
+          console.log("ANNOTATION #", ++i, ": ", str[1]);
+          console.log("LENGTH: ", str[1].length);
+
+          annotationText += "\n" + str[1];
         } else break;
       }
     } else annotationText = "";
@@ -227,16 +227,9 @@ function sendDiscordMessage({
 ${chapters.join("\n")}
 
 :link: [Страница тайтла](${url})
-${
-  annotation != "" &&
-  `
-${annotation}
-`
-}
+${annotation != "" ? `${annotation}` : ""}
 
-${staff}
-
-`;
+${staff}`;
   //${thumbnail}
 
   getCoverImageStream(thumbnail).then((stream) => {
