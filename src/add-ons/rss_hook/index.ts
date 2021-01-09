@@ -14,6 +14,7 @@ import {
   writeTimeInfo,
 } from "./functions";
 
+// подключение к БД
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
@@ -28,11 +29,8 @@ const hook: Discord.WebhookClient = new Discord.WebhookClient(
   process.env.HOOK_CAPTAINHOOK_TOKEN as string
 );
 
-//fs.readFile("rssInfo.json", "utf8")
-// Promise.resolve(
-//     `{"lastPostTime": "${new Date("Thu, 03 Sep 2020 17:00:00 GMT").getTime()}"}`
-
 function startRSS() {
+  // чтение времени последнего обновления из БД
   new Promise(async (resolve) => {
     try {
       const client = await pool.connect();
@@ -43,9 +41,10 @@ function startRSS() {
       console.error(err);
     }
   }).then(async (feedInfoTable: any) => {
+    // время последнего обновления
     let lastFeedTime: number = feedInfoTable.results[0].date;
-    let lastTime: number = lastFeedTime;
 
+    // получение RSS-ленты
     let feed: Parser.Output = await parser.parseURL(
       "https://ruranobe.ru/updates.rss"
     );
@@ -69,13 +68,17 @@ function startRSS() {
       return -1;
     })[0];
 
-    lastTime = new Date(lastItem?.pubDate as string).getTime();
+    let lastTime: number = new Date(lastItem?.pubDate as string).getTime();
 
+    // запись последнего обновления в ДБ
     writeTimeInfo(pool, lastTime, lastFeedTime);
 
+    // преобразование содержимого RSS-поста в информацию для запроса к API
     let rssNews: Map<string, ItemInfo> = reduceItemsToMap(
       items.map(parseRSSItem)
     );
+
+    // стек запросов к API
     let postStack: Promise<RequestData>[] = [];
 
     for (let rN of rssNews.values()) {
@@ -105,7 +108,9 @@ function startRSS() {
           if (t > lastTime) lastTime = t;
         });
 
+        // отсеивание старых глав
         pI.chapters = compareChapters(pI.chapters, lastFeedTime);
+
         sendDiscordMessage(pI);
       }
     });

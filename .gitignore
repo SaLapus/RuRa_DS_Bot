@@ -1,3 +1,9 @@
 node_modules
+
 js
+querys
 tests
+
+env.js
+.prettierrc.json
+.eslintrc.json

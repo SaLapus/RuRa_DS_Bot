@@ -16,104 +16,16 @@ export function reduceItemsToMap(Items: ItemInfo[]): Map<string, ItemInfo> {
   return items;
 }
 
+//Убрать запрос в файл
 export function getVolumeInfo(variables: Request_Info): Promise<RequestData> {
   const postData = JSON.stringify({
     operationName: "Volume",
     variables,
-    query: `query Volume($url: String) {
-                project(project: { fullUrl: $url }) {
-                    id
-                    title
-                    url
-                    __typename
-                }
-                volume(volume: { fullUrl: $url }) {
-                    id
-                    url
-                    externalUrl
-                    file
-                    title
-                    titles(
-                        langs: ["jp", "cn", "romaji", "translit", "pinyin", "en", "ru", "*"]
-                    ) {
-                        lang
-                        value
-                        __typename
-                    }
-                    type
-                    shortName
-                    lastUpdate
-                    status
-                    statusHint
-                    staff {
-                        memberId
-                        userId
-                        nickname
-                        team {
-                            id
-                            name
-                            website
-                            __typename
-                        }
-                        teamShowLabel
-                        activityName
-                        activityType
-                        __typename
-                    }
-                    teams {
-                        team {
-                            id
-                            name
-                            website
-                            __typename
-                        }
-                        prefix
-                        suffix
-                        __typename
-                    }
-                    isbn
-                    annotation {
-                        text
-                        __typename
-                    }
-                    covers {
-                        thumbnail(width: 240)
-                        url
-                        __typename
-                    }
-                    chapters {
-                        id
-                        parentChapterId
-                        volumeId
-                        url
-                        title
-                        publishDate
-                        published
-                        __typename
-                    }
-                    next {
-                        volumeId
-                        url
-                        title
-                        shortTitle
-                        __typename
-                    }
-                    prev {
-                        volumeId
-                        url
-                        title
-                        shortTitle
-                        __typename
-                    }
-                    topicId
-                    __typename
-                }
-            }
-             `,
+    query: ``,
   });
 
   const options = {
-    hostname: "api.novel.tl",
+    hostname: `${process.env.HOST_VOLUME}`,
     port: 80,
     path: "/api/site/v2/graphql",
     method: "POST",
@@ -154,7 +66,7 @@ export function getCoverImageStream(path: string): Promise<stream.Readable> {
   console.log("IMG_PATH", path);
 
   const options = {
-    hostname: "groundzero.top",
+    hostname: `${process.env.HOST_IMAGE}`,
     port: 80,
     path: path,
     method: "GET",
@@ -175,13 +87,8 @@ export function getCoverImageStream(path: string): Promise<stream.Readable> {
   });
 }
 
-export function compareChapters(
-  volumeChapters: Chapter[],
-  time: number
-): ParentChapter[] {
-  let chapters = volumeChapters.filter(
-    (v) => new Date(v.publishDate).getTime() >= time
-  );
+export function compareChapters(volumeChapters: Chapter[], time: number): ParentChapter[] {
+  let chapters = volumeChapters.filter((v) => new Date(v.publishDate).getTime() >= time);
   let parentChapters: ParentChapter[] = [];
 
   for (let ch of chapters) {
@@ -202,18 +109,11 @@ export function compareChapters(
   });
 }
 
-export async function writeTimeInfo(
-  pool: Pool,
-  newDate: number,
-  pastDate: number
-) {
+export async function writeTimeInfo(pool: Pool, newDate: number, pastDate: number) {
   try {
     const client = await pool.connect();
     console.log(`UPDATE time SET date = ${newDate} WHERE date = ${pastDate};`);
-    await client.query("UPDATE time SET date = $1 WHERE date = $2;", [
-      newDate,
-      pastDate,
-    ]);
+    await client.query("UPDATE time SET date = $1 WHERE date = $2;", [newDate, pastDate]);
     client.release();
   } catch (err) {
     console.error(err);
