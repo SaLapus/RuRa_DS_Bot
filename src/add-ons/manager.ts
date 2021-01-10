@@ -1,72 +1,65 @@
 import * as fs from "fs";
-import { spawn } from "child_process";
+import * as child_process from "child_process";
 
 export interface AppOptions {
   name: string;
   args: string[];
 }
-type StartOptions = AppOptions | "all" | "nothing";
 
-function Start(mode: "default", app: "all" | "nothing", exeption: string[]): void;
-function Start(mode: "one", app: AppOptions, exeption?: string[]): void;
-function Start(mode: "default" | "one", app: StartOptions, exeption: string[] = [""]) {
-  switch (mode) {
-    case "default":
-      if (app === "nothing") {
-        console.log("No AddOns was on");
-        return;
+class Manager {
+  Apps: Map<string, child_process.ChildProcess> = new Map();
+
+  constructor(app: "all" | "nothing", exeption: string[] = [""]) {
+    if (app === "nothing") {
+      console.log("No AddOns was on");
+      return;
+    }
+
+    fs.readdir("./add-ons", { withFileTypes: true }, (err, f) => {
+      if (err) {
+        console.error("SL: Read Dir Fail");
+        throw err;
       }
+      let files = f
+        .filter((e) => e.isDirectory())
+        .filter((e) => !exeption.some((name) => name === e.name));
 
-      fs.readdir("./add-ons", { withFileTypes: true }, (err, f) => {
-        if (err) {
-          console.error("SL: Read Dir Fail");
-          throw err;
-        }
-        let files = f
-          .filter((e) => e.isDirectory())
-          .filter((e) => !exeption.some((name) => name === e.name));
-        console.log(files);
-        files.forEach((file) => {
-          startAddOnn(file);
-        });
+      console.log(files);
+
+      files.forEach((file) => {
+        this.startApp(file.name);
       });
-      break;
-    case "one":
-      fs.readdir("./add-ons", { withFileTypes: true }, (err, f) => {
-        if (err) {
-          console.error("SL: Read Dir Fail");
-          throw err;
-        }
-        let file = f
-          .filter((e) => e.isDirectory())
-          .filter((e) => e.name === (app as AppOptions).name);
-        console.log(file);
+    });
+  }
 
-        if (file.length > 1) throw new Error("SL: More file then expected");
-        else if (file.length === 0) throw new Error("SL: No such file");
+  startApp(name: string, args: string[] = [""]) {
+    const App = child_process.fork(`./index`, [...args], {
+      cwd: `./add-ons/${name}`,
+    });
 
-        startAddOnn(file.pop() as fs.Dirent, (app as AppOptions).args);
-      });
-      break;
+    App.stdout?.on("data", (data) => {
+      console.log(`OUT in ${name.toUpperCase()}: ${data}`);
+    });
+
+    App.stderr?.on("data", (data) => {
+      console.error(`ERROR in ${name.toUpperCase()}: ${data}`);
+    });
+
+    App.on("close", (code) => {
+      console.log(`child process ${name.toUpperCase()} exited with code ${code}`);
+    });
+
+    this.Apps.set(name, App);
+  }
+
+  stopApp(name: string) {
+    if (this.Apps.has(name)) {
+      this.Apps.get(name)?.kill();
+      this.Apps.delete(name);
+      return true;
+    }
+    return false;
   }
 }
 
-function startAddOnn(file: fs.Dirent, args: string[] = [""]) {
-  const App = spawn("node", [`./index`, ...args], {
-    cwd: `./add-ons/${file.name}`,
-  });
-
-  App.stdout.on("data", (data) => {
-    console.log(`stdout${file.name.toUpperCase()}: ${data}`);
-  });
-
-  App.stderr.on("data", (data) => {
-    console.error(`stderr${file.name.toUpperCase()}: ${data}`);
-  });
-
-  App.on("close", (code) => {
-    console.log(`child process ${file.name.toUpperCase()} exited with code ${code}`);
-  });
-}
-
-export default Start;
+export default Manager;

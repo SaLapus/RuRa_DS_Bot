@@ -30,13 +30,17 @@ process.argv.forEach((value) => {
   }
 });
 
-DB.init("no-db", options);
-
-setTimeout(() => {
-  setInterval(() => {
-    setTimeout(runUpdates, 30 * 1000);
-  }, 5 * 60 * 1000);
-}, new Date(0).setUTCHours(0, 55) - (Date.now() % new Date(0).setUTCHours(1)));
+if (noDB) {
+  DB.init("no-db", options);
+  runUpdates();
+} else {
+  DB.init("default");
+  setTimeout(() => {
+    setInterval(() => {
+      setTimeout(runUpdates, 30 * 1000);
+    }, 5 * 60 * 1000);
+  }, new Date(0).setUTCHours(0, 55) - (Date.now() % new Date(0).setUTCHours(1)));
+}
 
 async function runUpdates() {
   let updates = await getAllUpdates();
@@ -47,10 +51,12 @@ async function runUpdates() {
   });
 
   for (const update of updates) {
-    const post = await Promise.all(parseUpdate(update));
+    const post = await parseUpdate(update);
     const attachment = new Discord.MessageAttachment(post[1]);
     await hook.send(post[0], attachment).catch((e) => console.log(e, "\nSL: Sending Error"));
   }
+
+  if (!noDB) Updates.updateTime(updates.map((e) => e.showTime));
 }
 
 async function getAllUpdates(length: number = 1): Promise<Types.UpdatesContent[]> {
@@ -63,7 +69,7 @@ async function getAllUpdates(length: number = 1): Promise<Types.UpdatesContent[]
   return Promise.resolve(updates);
 }
 
-function parseUpdate(update: Types.UpdatesContent): [Promise<string>, Promise<stream.Readable>] {
+async function parseUpdate(update: Types.UpdatesContent): Promise<[string, stream.Readable]> {
   let annotationText: string = "";
   if (update.volume.annotation.text) {
     let anRegArray = update.volume.annotation.text.match(/<p id="p\d">(.+)<\/p>/g);
@@ -84,26 +90,34 @@ function parseUpdate(update: Types.UpdatesContent): [Promise<string>, Promise<st
     } else annotationText = "";
   } else annotationText = "";
 
+  if(!annotationText) annotationText = await Updates.getProjectDesc(update.projectId)
+
   let staff = "";
   for (let member of update.volume.staff) {
     staff += `${member.activityName}: *${member.nickname}*\n`;
   }
 
-  return [
+  return Promise.all([
     Promise.resolve(
       `**${update.title}**
 ${
   update.volume.status === "done" || update.volume.status === "decor"
-    ? "\n\n**ЗАВЕРШЕНО**\n<@&467086240135512064>\n\n"
+    ? "\n**ЗАВЕРШЕНО**\n<@&467086240135512064>\n"
     : ""
 }
 ${update.updated}
 
 :link: [Страница тайтла](https://ruranobe.ru/${update.url})
-${annotationText != "" ? `${annotationText}` : ""}
+${annotationText} 
+
+{
+  project(project: {fullUrl: "https://ruranobe.ru/r/ho"}) {
+    shortDescription
+  }
+}
 
 ${staff}`
     ),
     Updates.getCoverStream(update.volume.covers.shift()?.url as string),
-  ];
+  ]);
 }

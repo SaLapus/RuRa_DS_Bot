@@ -19,6 +19,11 @@ export interface TimeOptions {
   defaultTime?: number;
 }
 
+export type APIResponse = { updates: Updates } | { project: Project };
+export interface Updates {
+  content: UpdatesContent[];
+}
+
 export interface UpdatesContent {
   type: string;
   showTime: string;
@@ -34,6 +39,10 @@ export interface UpdatesContent {
   volumeUrl: string;
   volume: Volume;
   main: boolean;
+}
+
+export interface Project {
+  shortDescription: string;
 }
 
 interface Volume {

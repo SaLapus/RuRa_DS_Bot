@@ -7,20 +7,35 @@ import * as Types from "./types";
 
 export function getUpdates(length: number): Promise<Types.UpdatesContent[]> {
   return new Promise(async (resolve) => {
-    const updates = await requestAPI("updates", { size: length });
-    resolve([...(updates as Types.UpdatesContent[])]);
+    const { updates } = (await requestAPI("updates", { size: length })) as {
+      updates: Types.Updates;
+    };
+    resolve(updates.content);
   });
+}
+
+export async function getProjectDesc(projectId: number) {
+  const { project } = (await requestAPI("project", { id: projectId })) as {
+    project: Types.Project;
+  };
+  return Promise.resolve(project.shortDescription);
 }
 
 function getQuery(type: string): Promise<string> {
   switch (type) {
     case "updates":
-      return fs.readFile(process.cwd() + "\\querys\\lastPosts.txt", {
+      return fs.readFile(process.cwd() + "/querys/lastPosts.txt", {
         encoding: "utf-8",
       });
+      break;
+    case "project":
+      return fs.readFile(process.cwd() + "/querys/projectDesc.txt", {
+        encoding: "utf-8",
+      });
+      break;
+    default:
+      throw new Error(`SL: No such type: ${type}`);
   }
-
-  throw "Unexpected type of Query";
 }
 
 async function requestAPI(type: string, vars: object) {
@@ -43,7 +58,7 @@ async function requestAPI(type: string, vars: object) {
 
   console.log("SIZE: ", vars);
 
-  return new Promise((resolve: (value: Types.UpdatesContent[]) => void) => {
+  return new Promise((resolve: (value: Types.APIResponse) => void) => {
     const req = http.request(options, (res) => {
       console.log(`STATUS: ${res.statusCode}`);
 
@@ -59,7 +74,7 @@ async function requestAPI(type: string, vars: object) {
       });
 
       res.on("end", () => {
-        const content = JSON.parse(chunks.join("")).data.updates.content;
+        const content = JSON.parse(chunks.join("")).data;
         resolve(content);
       });
     });
@@ -99,22 +114,17 @@ export function getCoverStream(path: string): Promise<stream.Readable> {
   });
 }
 
-export async function checkRelevance(
-  update: Types.UpdatesContent
-): Promise<boolean> {
+export async function checkRelevance(update: Types.UpdatesContent): Promise<boolean> {
   const date = await DB.getSavedTime();
   if (date && update.showTime) {
-    if (new Date(update.showTime) > new Date(date))
-      return Promise.resolve(true);
+    if (new Date(update.showTime) > new Date(date)) return Promise.resolve(true);
     else return Promise.resolve(false);
   }
 
   throw new Error("SL: Date Comparation Error");
 }
 
-export function reduceUpdates(
-  updates: Types.UpdatesContent[]
-): Types.UpdatesContent[] {
+export function reduceUpdates(updates: Types.UpdatesContent[]): Types.UpdatesContent[] {
   let updatesMap: Map<string, Types.UpdatesContent> = new Map();
 
   updates = updates.reverse();
@@ -137,4 +147,14 @@ export function reduceUpdates(
   }
 
   return [...updatesMap.values()];
+}
+
+export function updateTime(dates: string[]) {
+  let times = dates.map((e) => new Date(e).getTime());
+  DB.saveTime(
+    times.reduce((acc, cur) => {
+      if (acc > cur) return acc;
+      return cur;
+    })
+  );
 }

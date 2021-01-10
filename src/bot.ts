@@ -1,16 +1,11 @@
 import * as Discord from "discord.js";
 
 import Manager, { AppOptions } from "./add-ons/manager";
-import "./env";
+// import "./env";
 
-Manager(
-  "default",
+const manager = new Manager(
   "all",
-  [
-    "activity",
-    "rss_hook",
-    "updates",
-  ] /*названия модулей, которые не планируются включать*/
+  ["activity", "rss_hook", "updates"] /*названия модулей, которые не планируются включать*/
 );
 
 const Bot = new Discord.Client();
@@ -22,7 +17,7 @@ Bot.on("ready", () => {
 Bot.on("message", (message: Discord.Message) => {
   if (message.author.id !== process.env.AUTHOR_ID) return;
 
-  if (message.content.startsWith("!app-start")) {
+  if (message.content.startsWith("!app")) {
     let args = message.content.split(" ");
 
     console.log(args);
@@ -33,12 +28,22 @@ Bot.on("message", (message: Discord.Message) => {
       return;
     }
 
-    let app: AppOptions = {
-      name: args.shift() as string,
-      args: args.length ? args : [""],
-    };
+    switch (args.shift()) {
+      case "start":
+        let app: AppOptions = {
+          name: args.shift() as string,
+          args: args.length ? args : [""],
+        };
 
-    Manager("one", app);
+        manager.startApp(app.name, app.args);
+        break;
+
+      case "stop":
+        const name = args.shift() as string;
+        if (manager.stopApp(name)) console.log(`${name.toUpperCase()} is stoped`);
+        else console.log(`${name.toUpperCase()}: Unknown name of app or this app is not running.`);
+        break;
+    }
   }
 });
 
