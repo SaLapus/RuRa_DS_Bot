@@ -1,6 +1,6 @@
 import { Pool } from "pg";
 import "./types";
-import * as Types from "./types";
+import {DBTypes as Types} from "./types";
 
 const _: Types.DataBaseInfoObject = {
   pool: undefined,
@@ -36,8 +36,7 @@ export function init(type: "default" | "no-db", options?: Types.TimeOptions) {
       break;
     case "no-db":
       if (options?.defaultTime) _.setTime(options.defaultTime);
-      else if (options?.timeRange)
-        _.setTime(Date.now() - options.timeRange.getTime());
+      else if (options?.timeRange) _.setTime(Date.now() - options.timeRange.getTime());
       else throw new Error("SL: No default time for no-db init");
 
       break;
@@ -56,7 +55,7 @@ export async function getSavedTime(): Promise<Types.DBTime> {
       const client = await pool.connect();
       const result = await client.query("SELECT * FROM time");
       client.release();
-      return result ? _.setTime(result.rows[0].date) : null;
+      return result ? _.setTime(parseInt(result.rows[0].date, 10)) : null;
     } catch (err) {
       console.error(err);
     }
@@ -71,10 +70,7 @@ export async function saveTime(newTime: number) {
 
     const client = await pool.connect();
     console.log(`UPDATE time SET date = ${newTime} WHERE date = ${time};`);
-    await client.query("UPDATE time SET date = $1 WHERE date = $2;", [
-      newTime,
-      time,
-    ]);
+    await client.query("UPDATE time SET date = $1 WHERE date = $2;", [newTime, time]);
 
     client.release();
     _.setTime(newTime);

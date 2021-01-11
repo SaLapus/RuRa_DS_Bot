@@ -3,12 +3,12 @@ import http from "http";
 import * as stream from "stream";
 
 import * as DB from "./db";
-import * as Types from "./types";
+import { APITypes  } from "./types";
 
-export function getUpdates(length: number): Promise<Types.UpdatesContent[]> {
+export function getUpdates(length: number): Promise<APITypes.UpdatesContent[]> {
   return new Promise(async (resolve) => {
     const { updates } = (await requestAPI("updates", { size: length })) as {
-      updates: Types.Updates;
+      updates: APITypes.Updates;
     };
     resolve(updates.content);
   });
@@ -16,7 +16,7 @@ export function getUpdates(length: number): Promise<Types.UpdatesContent[]> {
 
 export async function getProjectDesc(projectId: number) {
   const { project } = (await requestAPI("project", { id: projectId })) as {
-    project: Types.Project;
+    project: APITypes.Project;
   };
   return Promise.resolve(project.shortDescription);
 }
@@ -27,20 +27,24 @@ function getQuery(type: string): Promise<string> {
       return fs.readFile(process.cwd() + "/querys/lastPosts.txt", {
         encoding: "utf-8",
       });
-      break;
+
     case "project":
       return fs.readFile(process.cwd() + "/querys/projectDesc.txt", {
         encoding: "utf-8",
       });
-      break;
+
     default:
       throw new Error(`SL: No such type: ${type}`);
   }
 }
 
 async function requestAPI(type: string, vars: object) {
+  const operationName = [type.split("").shift()?.toUpperCase()]
+    .concat(type.split("").slice(1))
+    .join("");
+
   const postData = JSON.stringify({
-    operationName: "Updates",
+    operationName,
     variables: vars,
     query: await getQuery(type),
   });
@@ -56,9 +60,9 @@ async function requestAPI(type: string, vars: object) {
     },
   };
 
-  console.log("SIZE: ", vars);
+  console.log("ARGS: ", vars);
 
-  return new Promise((resolve: (value: Types.APIResponse) => void) => {
+  return new Promise((resolve: (value: APITypes.APIResponse) => void) => {
     const req = http.request(options, (res) => {
       console.log(`STATUS: ${res.statusCode}`);
 
@@ -114,8 +118,9 @@ export function getCoverStream(path: string): Promise<stream.Readable> {
   });
 }
 
-export async function checkRelevance(update: Types.UpdatesContent): Promise<boolean> {
+export async function checkRelevance(update: APITypes.UpdatesContent): Promise<boolean> {
   const date = await DB.getSavedTime();
+
   if (date && update.showTime) {
     if (new Date(update.showTime) > new Date(date)) return Promise.resolve(true);
     else return Promise.resolve(false);
@@ -124,8 +129,8 @@ export async function checkRelevance(update: Types.UpdatesContent): Promise<bool
   throw new Error("SL: Date Comparation Error");
 }
 
-export function reduceUpdates(updates: Types.UpdatesContent[]): Types.UpdatesContent[] {
-  let updatesMap: Map<string, Types.UpdatesContent> = new Map();
+export function reduceUpdates(updates: APITypes.UpdatesContent[]): APITypes.UpdatesContent[] {
+  let updatesMap: Map<string, APITypes.UpdatesContent> = new Map();
 
   updates = updates.reverse();
 
