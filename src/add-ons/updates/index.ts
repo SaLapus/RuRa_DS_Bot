@@ -23,7 +23,7 @@ let options: IndexOptions = {
   DBTime: {},
 };
 
-checkARGS();
+setSettings();
 
 if (options.noDB) {
   DB.init("no-db", options.DBTime);
@@ -32,21 +32,23 @@ if (options.noDB) {
 }
 
 if (options.debug) {
-  runUpdates().then(hook.destroy);
+  runUpdates().then(() => hook.destroy());
 } else {
   shedule(runUpdates);
 }
 
-function checkARGS() {
+function setSettings() {
   const args = process.argv
     .filter((e) => {
-      e.startsWith("--");
+      return e.startsWith("--");
     })
     .map((value) => {
-      return {
-        name: value.match(/(?<=--).+(?==)/)?.shift(),
+      const o = {
+        name: value.match(/(?<=--)[\w-]+/)?.shift(),
         value: value.match(/(?<==).+/)?.shift(),
       };
+
+      return o;
     });
 
   for (let arg of args) {
@@ -54,21 +56,18 @@ function checkARGS() {
       case "no-db":
         if (!arg.value) throw new Error("There are no args for NoDB call");
 
-        let o = arg.value.match(/(?<days>\d+days)(?<hours>\d+hours)|\d+/);
-
-        if (!o) throw new Error("Matching args value error");
-
         let time: number = new Date(0).getTime();
 
-        if (o.groups?.days || o.groups?.hours) {
-          if (o.groups?.days) {
-            const days = parseInt(o.groups.days.match(/\d+(?=days)/)?.shift() as string, 10);
-            time += new Date(0).setUTCHours(days * 24);
+        let days = arg.value.match(/(\d+)days/);
+        let hours = arg.value.match(/(\d+)hours/);
+
+        if (days || hours) {
+          if (days) {
+            time += new Date(0).setUTCHours(parseInt(days[1], 10) * 24);
           }
 
-          if (o.groups?.hours) {
-            const hours = parseInt(o.groups.days.match(/\d+(?=hours)/)?.shift() as string, 10);
-            time += new Date(0).setUTCHours(hours);
+          if (hours) {
+            time += new Date(0).setUTCHours(parseInt(hours[1], 10));
           }
 
           options.DBTime.timeRange = new Date(time);

@@ -3,7 +3,7 @@ import http from "http";
 import * as stream from "stream";
 
 import * as DB from "./db";
-import { APITypes  } from "./types";
+import { APITypes } from "./types";
 
 export function getUpdates(length: number): Promise<APITypes.UpdatesContent[]> {
   return new Promise(async (resolve) => {
@@ -38,7 +38,13 @@ function getQuery(type: string): Promise<string> {
   }
 }
 
-async function requestAPI(type: string, vars: object) {
+async function requestAPI(type: string, vars: any) {
+  console.log("ARGS: ", vars);
+
+  if (vars.size && vars.size > 50) {
+    throw new Error("Too may requests");
+  }
+
   const operationName = [type.split("").shift()?.toUpperCase()]
     .concat(type.split("").slice(1))
     .join("");
@@ -59,8 +65,6 @@ async function requestAPI(type: string, vars: object) {
       "Content-Length": Buffer.byteLength(postData),
     },
   };
-
-  console.log("ARGS: ", vars);
 
   return new Promise((resolve: (value: APITypes.APIResponse) => void) => {
     const req = http.request(options, (res) => {
