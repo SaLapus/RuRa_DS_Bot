@@ -27,7 +27,6 @@ let options: IndexOptions = {
 
 setSettings();
 
-
 //noDB
 if (options.noDB) DB.init("no-db", options.DBTime);
 else DB.init("default");
@@ -91,6 +90,9 @@ function setSettings() {
   }
 }
 
+/*
+Правильная настройка времени
+*/
 function shedule(func: () => Promise<void>) {
   let timeout = new Date(0).setUTCHours(0, 10) - (Date.now() % new Date(0).setUTCHours(0, 15));
 
@@ -124,8 +126,7 @@ async function runUpdates() {
     console.log("No Updates");
     return;
   }
-  updates = Updates.reduceUpdates(updates);
-
+  updates = await Updates.reduceUpdates(updates);
   for (const update of updates) {
     const post = await parseUpdate(update);
     const attachment = new Discord.MessageAttachment(post[1]);
@@ -178,13 +179,24 @@ ${
     ? "\n**ЗАВЕРШЕНО**\n<@&467086240135512064>\n"
     : ""
 }
-${update.updated}
+${parseChapters(update.chapters as APITypes.ParentChapter[])}
 
-:link: [Страница тайтла](https://ruranobe.ru/${update.url})
+:link: [Страница тайтла](https://ruranobe.ru/r/${update.url})
 ${annotationText} 
 
 ${staff}`
     ),
     Updates.getCoverStream(update.volume.covers.shift()?.url as string),
   ]);
+}
+
+function parseChapters(chapters: APITypes.ParentChapter[]) {
+  let updates = "";
+  chapters.forEach((pCh) => {
+    updates += `${pCh.title}\n`;
+    pCh.childs.forEach((chCh) => {
+      updates += ` • ${chCh.title}\n`;
+    });
+  });
+  return updates;
 }

@@ -32,7 +32,9 @@ Bot.on("message", async (m: Discord.Message) => {
 
   if (regExpTwit.test(m.content) == true) {
     console.log("Twitter url");
-    await reactChain(new Message(m));
+    setTimeout(() => {
+      reactChain(message);
+    }, 5 * 1000);
   }
 });
 
@@ -44,4 +46,4 @@ async function reactChain(message: Message) {
   return message.log();
 }
 
-Bot.login(process.env.BOT_BORIS_TOKEN);
+Bot.login(process.env.BOT_RURACOLOR_TOKEN);

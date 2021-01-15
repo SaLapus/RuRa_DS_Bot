@@ -3,13 +3,9 @@ import * as Discord from "discord.js";
 import Manager, { AppOptions } from "./add-ons/manager";
 
 const manager = new Manager(
-  "all",
-  ["activity", "rss_hook", "updates"] /*названия модулей, которые не планируются включать*/
+  "nothing",
+  ["activity", "rss_hook"] /*названия модулей, которые не планируются включать*/
 );
-
-/*
-Правильная натсройка времени
-*/
 
 const Bot = new Discord.Client();
 
@@ -20,7 +16,7 @@ Bot.on("ready", () => {
 Bot.on("message", (message: Discord.Message) => {
   if (message.author.id !== process.env.AUTHOR_ID) return;
 
-  if (message.content.startsWith("!app")) {
+  if (message.content.startsWith("!test")) {
     let args = message.content.split(" ");
 
     console.log(args);

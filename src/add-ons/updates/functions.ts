@@ -9,13 +9,11 @@ export const APIRequestsOptions = {
   noLoop: true,
 };
 
-export function getUpdates(length: number): Promise<APITypes.UpdatesContent[]> {
-  return new Promise(async (resolve) => {
-    const { updates } = (await requestAPI("updates", { size: length })) as {
-      updates: APITypes.Updates;
-    };
-    resolve(updates.content);
-  });
+export async function getUpdates(length: number): Promise<APITypes.UpdatesContent[]> {
+  const { updates } = (await requestAPI("updates", { size: length })) as {
+    updates: APITypes.Updates;
+  };
+  return Promise.resolve(updates.content);
 }
 
 export async function getProjectDesc(projectId: number) {
@@ -23,6 +21,13 @@ export async function getProjectDesc(projectId: number) {
     project: APITypes.Project;
   };
   return Promise.resolve(project.shortDescription);
+}
+
+export async function getChapterInfo(chapterId: number) {
+  const { chapter } = (await requestAPI("chapter", { id: chapterId })) as {
+    chapter: APITypes.Chapter;
+  };
+  return Promise.resolve(chapter);
 }
 
 function getQuery(type: string): Promise<string> {
@@ -34,6 +39,11 @@ function getQuery(type: string): Promise<string> {
 
     case "project":
       return fs.readFile(process.cwd() + "/querys/projectDesc.txt", {
+        encoding: "utf-8",
+      });
+
+    case "chapter":
+      return fs.readFile(process.cwd() + "/querys/chapterInfo.txt", {
         encoding: "utf-8",
       });
 
@@ -137,26 +147,46 @@ export async function checkRelevance(update: APITypes.UpdatesContent): Promise<b
   throw new Error("SL: Date Comparation Error");
 }
 
-export function reduceUpdates(updates: APITypes.UpdatesContent[]): APITypes.UpdatesContent[] {
+function reduceChapters(update: APITypes.UpdatesContent) {
+  const parentChapters: Map<number, APITypes.ParentChapter> = new Map();
+
+  if (update.chapters) {
+    for (const chapter of update.chapters) {
+      if (!chapter) continue;
+
+      if (chapter?.parentChapterId == null) {
+        parentChapters.set(chapter.id, Object.assign({ childs: [] }, chapter));
+      } else parentChapters.get(chapter.parentChapterId)?.childs.push(chapter);
+    }
+  }
+
+  return [...parentChapters.values()];
+}
+
+export async function reduceUpdates(updates: APITypes.UpdatesContent[]) {
   let updatesMap: Map<string, APITypes.UpdatesContent> = new Map();
 
   updates = updates.reverse();
 
-  let i = 0;
-  for (const update of updates) {
-    i++;
+  for (let update of updates) {
     // если апдейт уже есть, то апдейт пересоздается с расширенным описанием глав
 
-    if (updatesMap.has(`${update.projectId}_${update.volumeId}`)) {
-      let u = updatesMap.get(`${update.projectId}_${update.volumeId}`);
-      if (u) {
-        let newU = {
-          updated: u.updated.concat("\n" + update.updated),
-          shortUpdated: u.shortUpdated.concat("\n" + update.shortUpdated),
-        };
-        Object.assign(u, newU);
+    let chapterInfo: APITypes.Chapter;
+    if (update.chapterId) {
+      chapterInfo = await getChapterInfo(update.chapterId);
+
+      if (updatesMap.has(`${update.projectId}_${update.volumeId}`)) {
+        let u = updatesMap.get(`${update.projectId}_${update.volumeId}`);
+        u?.chapters?.push(chapterInfo);
+      } else {
+        update.chapters = [chapterInfo];
+        updatesMap.set(`${update.projectId}_${update.volumeId}`, update);
       }
-    } else updatesMap.set(`${update.projectId}_${update.volumeId}`, update);
+    }
+  }
+
+  for (let update of updatesMap.values()) {
+    Object.assign(update, { chapters: reduceChapters(update) });
   }
 
   return [...updatesMap.values()];

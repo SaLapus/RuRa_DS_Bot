@@ -29,7 +29,8 @@ export namespace DBTypes {
 }
 
 export namespace APITypes {
-  export type APIResponse = { updates: Updates } | { project: Project };
+  export type APIResponse = { updates: Updates } | { project: Project } | { chapter: Chapter };
+
   export interface Updates {
     content: UpdatesContent[];
   }
@@ -40,15 +41,17 @@ export namespace APITypes {
     description?: string;
     url: string;
     title: string;
-    updated: string;
-    shortUpdated: string;
+    // updated: string;
+    // shortUpdated: string;
     sectionId?: number;
     projectId: number;
     volumeId?: number;
     chapterId?: number;
     volumeUrl: string;
     volume: Volume;
-    main: boolean;
+    // main: boolean;
+
+    chapters?: Chapter[];
   }
 
   export interface Project {
@@ -79,5 +82,16 @@ export namespace APITypes {
   interface Staff {
     nickname: string;
     activityName?: string;
+  }
+
+  export interface Chapter {
+    title: string;
+    id: number;
+    parentChapterId: number | null;
+    volumeId: number;
+  }
+
+  export interface ParentChapter extends Chapter {
+    childs: Chapter[];
   }
 }
