@@ -20,22 +20,24 @@ let options: IndexOptions = {
 
   debug: false,
 
+  noLoop: true,
+
   DBTime: {},
 };
 
 setSettings();
 
-if (options.noDB) {
-  DB.init("no-db", options.DBTime);
-} else {
-  DB.init("default");
-}
 
-if (options.debug) {
-  runUpdates().then(() => hook.destroy());
-} else {
-  shedule(runUpdates);
-}
+//noDB
+if (options.noDB) DB.init("no-db", options.DBTime);
+else DB.init("default");
+
+//Debug
+if (options.debug) runUpdates().then(() => hook.destroy());
+else shedule(runUpdates);
+
+//noLoop
+Updates.APIRequestsOptions.noLoop = options.noLoop;
 
 function setSettings() {
   const args = process.argv
@@ -81,6 +83,9 @@ function setSettings() {
         break;
       case "debug":
         options.debug = true;
+        break;
+      case "loop-trust":
+        options.noLoop = false;
         break;
     }
   }

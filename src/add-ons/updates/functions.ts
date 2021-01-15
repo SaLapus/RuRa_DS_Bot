@@ -5,6 +5,10 @@ import * as stream from "stream";
 import * as DB from "./db";
 import { APITypes } from "./types";
 
+export const APIRequestsOptions = {
+  noLoop: true,
+};
+
 export function getUpdates(length: number): Promise<APITypes.UpdatesContent[]> {
   return new Promise(async (resolve) => {
     const { updates } = (await requestAPI("updates", { size: length })) as {
@@ -41,7 +45,7 @@ function getQuery(type: string): Promise<string> {
 async function requestAPI(type: string, vars: any) {
   console.log("ARGS: ", vars);
 
-  if (vars.size && vars.size > 50) {
+  if (APIRequestsOptions.noLoop && vars.size && vars.size > 50) {
     throw new Error("Too may requests");
   }
 

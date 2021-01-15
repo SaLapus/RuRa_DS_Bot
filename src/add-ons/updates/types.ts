@@ -3,9 +3,10 @@ import type { Pool } from "pg";
 export declare function getSavedTime(pool: Pool): Promise<DBTypes.DBTime>;
 
 export interface IndexOptions {
-  noDB: boolean,
-  debug: boolean
-  DBTime: DBTypes.TimeOptions,
+  noDB: boolean;
+  debug: boolean;
+  noLoop: boolean;
+  DBTime: DBTypes.TimeOptions;
 }
 
 export namespace DBTypes {
