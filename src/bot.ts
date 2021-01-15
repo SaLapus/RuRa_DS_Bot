@@ -16,7 +16,7 @@ Bot.on("ready", () => {
 Bot.on("message", (message: Discord.Message) => {
   if (message.author.id !== process.env.AUTHOR_ID) return;
 
-  if (message.content.startsWith("!test")) {
+  if (message.content.startsWith("!app")) {
     let args = message.content.split(" ");
 
     console.log(args);
