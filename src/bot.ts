@@ -4,7 +4,7 @@ import Manager, { AppOptions } from "./add-ons/manager";
 
 const manager = new Manager(
   "all",
-  ["activity", "rss_hook"] /*названия модулей, которые не планируются включать*/
+  ["activity", "rss_hook", "updates"] /*названия модулей, которые не планируются включать*/
 );
 
 /*
@@ -20,7 +20,7 @@ Bot.on("ready", () => {
 Bot.on("message", (message: Discord.Message) => {
   if (message.author.id !== process.env.AUTHOR_ID) return;
 
-  if (message.content.startsWith("!test")) {
+  if (message.content.startsWith("!app")) {
     let args = message.content.split(" ");
 
     console.log(args);
