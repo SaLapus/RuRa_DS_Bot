@@ -82,7 +82,7 @@ export default class TwitterURLMessage {
   log() {
     console.log("Logging");
     const message = this.message;
-    console.log(JSON.stringify(Object.assign(this, { message: {} }), undefined, 1));
+    console.log(JSON.stringify(Object.assign(this, { message: {} })));
     return message;
   }
 }

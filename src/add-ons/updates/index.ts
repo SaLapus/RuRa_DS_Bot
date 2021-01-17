@@ -11,8 +11,8 @@ import * as DB from "./db";
 // подключение к БД
 
 const hook: Discord.WebhookClient = new Discord.WebhookClient(
-  process.env.HOOK_CAPTAINHOOK_ID as string,
-  process.env.HOOK_CAPTAINHOOK_TOKEN as string
+  process.env.HOOK_RURA_ID as string,
+  process.env.HOOK_RURA_TOKEN as string
 );
 
 let options: IndexOptions = {
@@ -99,7 +99,7 @@ function shedule(func: () => Promise<void>) {
   if (timeout < 0) {
     timeout = new Date(0).setUTCHours(0, 5) + timeout;
 
-    console.log("Start at ", new Date(timeout));
+    console.log("Start at ", new Date(new Date().getTime() + timeout));
 
     setTimeout(() => {
       setTimeout(func, 30 * 1000); // Задержка для избежания проверки до релиза
@@ -111,7 +111,7 @@ function shedule(func: () => Promise<void>) {
     return;
   }
 
-  console.log("Start at ", new Date(timeout));
+  console.log("Start at ", new Date(new Date().getTime() + timeout));
 
   setTimeout(() => {
     setInterval(() => {
@@ -173,15 +173,13 @@ async function parseUpdate(update: APITypes.UpdatesContent): Promise<[string, st
 
   return Promise.all([
     Promise.resolve(
-      `**${update.title}**
+      `**${update.title}** - ${parseChapters(update.chapters as APITypes.ParentChapter[])}
 ${
   update.volume.status === "done" || update.volume.status === "decor"
-    ? "\n**ЗАВЕРШЕНО**\n<@&467086240135512064>\n"
+    ? `\n**ЗАВЕРШЕНО**\n<@&${process.env.ROLE_TO_PING_ID}>\n`
     : ""
 }
-${parseChapters(update.chapters as APITypes.ParentChapter[])}
-
-:link: [Страница тайтла](https://ruranobe.ru/r/${update.url})
+:link: [Читать](https://ruranobe.ru/r/${update.url})
 ${annotationText} 
 
 ${staff}`
@@ -191,12 +189,11 @@ ${staff}`
 }
 
 function parseChapters(chapters: APITypes.ParentChapter[]) {
-  let updates = "";
-  chapters.forEach((pCh) => {
-    updates += `${pCh.title}\n`;
-    pCh.childs.forEach((chCh) => {
-      updates += ` • ${chCh.title}\n`;
-    });
-  });
+  let updates = `${chapters.shift()?.title}`;
+
+  if (chapters.length !== 0) {
+    updates += ` - ${chapters.pop()?.title}`;
+  }
+
   return updates;
 }
