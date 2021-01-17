@@ -3,7 +3,7 @@ import * as Discord from "discord.js";
 import Manager, { AppOptions } from "./add-ons/manager";
 
 const manager = new Manager(
-  "nothing",
+  "all",
   ["activity", "rss_hook"] /*названия модулей, которые не планируются включать*/
 );
 
@@ -11,12 +11,13 @@ const Bot = new Discord.Client();
 
 Bot.on("ready", () => {
   console.log(`Test Logged in as ${Bot.user?.tag}!`);
+  console.log("NODE_ENV: ", process.env.NODE_ENV);
 });
 
 Bot.on("message", (message: Discord.Message) => {
   if (message.author.id !== process.env.AUTHOR_ID) return;
 
-  if (message.content.startsWith("!app")) {
+  if (message.content.startsWith("!app") || message.content.startsWith("!test")) {
     let args = message.content.split(" ");
 
     console.log(args);
@@ -26,6 +27,7 @@ Bot.on("message", (message: Discord.Message) => {
       message.reply("No args");
       return;
     }
+    if (message.content.startsWith("!test")) args.push("--debug");
 
     switch (args.shift()) {
       case "start":

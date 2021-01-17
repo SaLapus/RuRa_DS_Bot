@@ -54,7 +54,7 @@ class Manager {
 
       App.on("close", (code) => {
         console.log(
-          `child process ${name.toUpperCase()} exited with code ${code}.\n App is killed: ${
+          `child process ${name.toUpperCase()} exited with code ${code}.\nApp is killed: ${
             this.Apps.get(name)?.killed
           }`
         );

@@ -1,19 +1,13 @@
 import * as stream from "stream";
 
 import * as Discord from "discord.js";
-import { Pool } from "pg";
 
 import { IndexOptions, APITypes } from "./types";
 
 import * as Updates from "./functions";
 import * as DB from "./db";
 
-// подключение к БД
-
-const hook: Discord.WebhookClient = new Discord.WebhookClient(
-  process.env.HOOK_RURA_ID as string,
-  process.env.HOOK_RURA_TOKEN as string
-);
+let hook: Discord.WebhookClient;
 
 let options: IndexOptions = {
   noDB: false,
@@ -32,8 +26,19 @@ if (options.noDB) DB.init("no-db", options.DBTime);
 else DB.init("default");
 
 //Debug
-if (options.debug) runUpdates().then(() => hook.destroy());
-else shedule(runUpdates);
+if (options.debug) {
+  hook = new Discord.WebhookClient(
+    process.env.HOOK_CAPTAINHOOK_ID as string,
+    process.env.HOOK_CAPTAINHOOK_TOKEN as string
+  );
+  runUpdates().then(() => hook.destroy());
+} else {
+  hook = new Discord.WebhookClient(
+    process.env.HOOK_RURA_ID as string,
+    process.env.HOOK_RURA_TOKEN as string
+  );
+  shedule(runUpdates);
+}
 
 //noLoop
 Updates.APIRequestsOptions.noLoop = options.noLoop;
@@ -52,7 +57,7 @@ function setSettings() {
       return o;
     });
 
-  for (let arg of args) {
+  for (let arg of new Set(args).values()) {
     switch (arg.name) {
       case "no-db":
         if (!arg.value) throw new Error("There are no args for NoDB call");
@@ -158,13 +163,14 @@ async function parseUpdate(update: APITypes.UpdatesContent): Promise<[string, st
           // console.log("ANNOTATION #", ++i, ": ", str[1]);
           console.log("ANNOTATION#", ++i, " LENGTH: ", str[1].length);
 
-          annotationText += "\n" + str[1];
+          annotationText += "\n" + str[1].trim();
         } else break;
       }
     } else annotationText = "";
   } else annotationText = "";
 
-  if (!annotationText) annotationText = "\n" + (await Updates.getProjectDesc(update.projectId));
+  if (!annotationText)
+    annotationText = "\n" + (await Updates.getProjectDesc(update.projectId)).trim();
 
   let staff = "";
   for (let member of update.volume.staff) {
@@ -189,10 +195,10 @@ ${staff}`
 }
 
 function parseChapters(chapters: APITypes.ParentChapter[]) {
-  let updates = `${chapters.shift()?.title}`;
+  let updates = `${chapters.shift()?.title.trim()}`;
 
   if (chapters.length !== 0) {
-    updates += ` - ${chapters.pop()?.title}`;
+    updates += ` - ${chapters.pop()?.title.trim()}`;
   }
 
   return updates;
