@@ -97,7 +97,11 @@ Bot.on("message", async (message: Discord.Message) => {
   }
 });
 
-Bot.on("message", async (message: Discord.Message) => {
+Bot.login(process.env.BOT_BORIS_TOKEN);
+
+const RuRaColor = new Discord.Client();
+
+RuRaColor.on("message", async (message: Discord.Message) => {
   if (message.channel.id !== "800044270370684958") return;
 
   const emojis = [message.guild?.emojis.cache.get("248177959192494080"), "❤", "🔥"];
@@ -115,12 +119,12 @@ Bot.on("message", async (message: Discord.Message) => {
     .catch(console.error);
 });
 
-Bot.on("message", (message) => {
+RuRaColor.on("message", (message) => {
   console.log(
-    `${(message.channel as Discord.TextChannel).name}: ${message.author} ${message.channel.id} ${
-      message.createdAt
-    }`
+    `${(message.channel as Discord.TextChannel).name}: ${message.author.username} ${
+      message.channel.id
+    } ${message.createdAt}`
   );
 });
 
-Bot.login(process.env.BOT_BORIS_TOKEN);
+RuRaColor.login(process.env.BOT_RURACOLOR_TOKEN);
