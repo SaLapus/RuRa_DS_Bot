@@ -13,6 +13,7 @@ export namespace DBTypes {
   export type DBTime = number | null;
 
   export interface DataBaseInfoObject {
+    type: string;
     pool: Pool | undefined;
     setPool: (pool: Pool) => Pool;
     getPool: () => Pool;
@@ -29,36 +30,45 @@ export namespace DBTypes {
 }
 
 export namespace APITypes {
-  export type APIResponse = { updates: Updates } | { project: Project } | { chapter: Chapter };
+  export type APIResponse =
+    | { volumeUpdates: VolumeUpdate.Data }
+    | { project: Project }
+    | { chapter: Chapter }
+    | { volume: Volume };
 
-  export interface Updates {
-    content: UpdatesContent[];
-  }
+  export namespace VolumeUpdate {
+    export interface Data {
+      content: Content[];
+    }
 
-  export interface UpdatesContent {
-    type: string;
-    showTime: string;
-    description?: string;
-    url: string;
-    title: string;
-    // updated: string;
-    // shortUpdated: string;
-    sectionId?: number;
-    projectId: number;
-    volumeId?: number;
-    chapterId?: number;
-    volumeUrl: string;
-    volume: Volume;
-    // main: boolean;
+    export interface Content {
+      title: string;
+      url: string;
+      showTime: string;
+      sectionId?: number;
+      projectId: number;
+      volumeId: number;
+      // updates: Update[];
+    }
 
-    chapters?: Chapter[];
+    // export interface Update{
+    //   type: string;
+    //   title: string;
+    //   updated: string;
+    //   url: string;
+    //   showTime: string;
+    //   sectionId?: number;
+    //   projectId: number;
+    //   volumeId: number;
+    //   chapterId?: number;
+    // }
   }
 
   export interface Project {
     shortDescription: string;
   }
 
-  interface Volume {
+  export interface Volume {
     id: number;
     url: string;
     fullUrl?: string;
@@ -66,32 +76,57 @@ export namespace APITypes {
     title?: string;
     shortName?: string;
     status?: string;
-    covers: Cover[];
-    annotation: Annotation;
-    staff: Staff[];
+    covers?: Image[];
+    annotation?: Annotation;
+    staff?: Worker[];
+    chapters?: Chapter[];
   }
 
-  interface Cover {
+  export interface Image {
     url?: string;
   }
 
-  interface Annotation {
+  export interface Annotation {
     text?: string;
   }
 
-  interface Staff {
+  export interface Worker {
     nickname: string;
     activityName?: string;
   }
 
   export interface Chapter {
-    title: string;
+    title?: string;
     id: number;
-    parentChapterId: number | null;
+    parentChapterId?: number | null;
     volumeId: number;
+    publishDate: string;
   }
 
   export interface ParentChapter extends Chapter {
     childs: Chapter[];
+  }
+}
+
+export namespace ReSenderInfo {
+  export interface Data {
+    type: "rura-update";
+    debug: boolean;
+    extended: Update;
+  }
+
+  export interface Update {
+    title: string;
+    chapters: APITypes.ParentChapter[];
+    annotation: string;
+    staff: {
+      [name: string]: string;
+    };
+    doneStatus: boolean;
+
+    description: string;
+
+    updateURL: string;
+    coverURL: string;
   }
 }

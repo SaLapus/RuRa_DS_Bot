@@ -9,11 +9,13 @@ export const APIRequestsOptions = {
   noLoop: true,
 };
 
-export async function getUpdates(length: number): Promise<APITypes.UpdatesContent[]> {
-  const { updates } = (await requestAPI("updates", { size: length })) as {
-    updates: APITypes.Updates;
+export async function getUpdates(
+  length: number
+): Promise<APITypes.VolumeUpdate.Content | undefined> {
+  const { volumeUpdates: update } = (await requestAPI("volumeUpdates", { number: length })) as {
+    volumeUpdates: APITypes.VolumeUpdate.Data;
   };
-  return Promise.resolve(updates.content);
+  return Promise.resolve(update.content?.shift());
 }
 
 export async function getProjectDesc(projectId: number) {
@@ -23,27 +25,25 @@ export async function getProjectDesc(projectId: number) {
   return Promise.resolve(project.shortDescription);
 }
 
-export async function getChapterInfo(chapterId: number) {
-  const { chapter } = (await requestAPI("chapter", { id: chapterId })) as {
-    chapter: APITypes.Chapter;
-  };
-  return Promise.resolve(chapter);
-}
-
 function getQuery(type: string): Promise<string> {
   switch (type) {
-    case "updates":
-      return fs.readFile(process.cwd() + "/querys/lastPosts.txt", {
+    case "volumeUpdates":
+      return fs.readFile(process.cwd() + "/querys/volumeUpdates.txt", {
         encoding: "utf-8",
       });
 
     case "project":
-      return fs.readFile(process.cwd() + "/querys/projectDesc.txt", {
+      return fs.readFile(process.cwd() + "/querys/project.txt", {
         encoding: "utf-8",
       });
 
     case "chapter":
-      return fs.readFile(process.cwd() + "/querys/chapterInfo.txt", {
+      return fs.readFile(process.cwd() + "/querys/chapter.txt", {
+        encoding: "utf-8",
+      });
+
+    case "volume":
+      return fs.readFile(process.cwd() + "/querys/volume.txt", {
         encoding: "utf-8",
       });
 
@@ -52,7 +52,7 @@ function getQuery(type: string): Promise<string> {
   }
 }
 
-async function requestAPI(type: string, vars: any) {
+export async function requestAPI(type: string, vars: any) {
   console.log("ARGS: ", vars);
 
   if (APIRequestsOptions.noLoop && vars.size && vars.size > 50) {
@@ -102,7 +102,7 @@ async function requestAPI(type: string, vars: any) {
     });
 
     req.on("error", (e) => {
-      console.error(`problem with VolumeRequest: ${e.message}`);
+      console.error(`problem with APIRequest: ${e.message}`);
     });
 
     // write data to request body
@@ -111,7 +111,8 @@ async function requestAPI(type: string, vars: any) {
   });
 }
 
-export function getCoverStream(path: string): Promise<stream.Readable> {
+export function getCoverStream(path: string | undefined): Promise<stream.Readable | undefined> {
+  if (!path) return Promise.resolve(undefined);
   console.log("IMG_PATH", path);
 
   const options = {
@@ -136,7 +137,7 @@ export function getCoverStream(path: string): Promise<stream.Readable> {
   });
 }
 
-export async function checkRelevance(update: APITypes.UpdatesContent): Promise<boolean> {
+export async function checkRelevance(update: APITypes.VolumeUpdate.Content): Promise<boolean> {
   const date = await DB.getSavedTime();
 
   if (date && update.showTime) {
@@ -145,51 +146,6 @@ export async function checkRelevance(update: APITypes.UpdatesContent): Promise<b
   }
 
   throw new Error("SL: Date Comparation Error");
-}
-
-function reduceChapters(update: APITypes.UpdatesContent) {
-  const parentChapters: Map<number, APITypes.ParentChapter> = new Map();
-
-  if (update.chapters) {
-    for (const chapter of update.chapters) {
-      if (!chapter) continue;
-
-      if (chapter?.parentChapterId == null) {
-        parentChapters.set(chapter.id, Object.assign({ childs: [] }, chapter));
-      } else parentChapters.get(chapter.parentChapterId)?.childs.push(chapter);
-    }
-  }
-
-  return [...parentChapters.values()];
-}
-
-export async function reduceUpdates(updates: APITypes.UpdatesContent[]) {
-  let updatesMap: Map<string, APITypes.UpdatesContent> = new Map();
-
-  updates = updates.reverse();
-
-  for (let update of updates) {
-    // если апдейт уже есть, то апдейт пересоздается с расширенным описанием глав
-
-    let chapterInfo: APITypes.Chapter;
-    if (update.chapterId) {
-      chapterInfo = await getChapterInfo(update.chapterId);
-
-      if (updatesMap.has(`${update.projectId}_${update.volumeId}`)) {
-        let u = updatesMap.get(`${update.projectId}_${update.volumeId}`);
-        u?.chapters?.push(chapterInfo);
-      } else {
-        update.chapters = [chapterInfo];
-        updatesMap.set(`${update.projectId}_${update.volumeId}`, update);
-      }
-    }
-  }
-
-  for (let update of updatesMap.values()) {
-    Object.assign(update, { chapters: reduceChapters(update) });
-  }
-
-  return [...updatesMap.values()];
 }
 
 export function updateTime(dates: string[]) {

@@ -1,8 +1,10 @@
 import { Pool } from "pg";
 import "./types";
-import {DBTypes as Types} from "./types";
+import { DBTypes as Types } from "./types";
 
 const _: Types.DataBaseInfoObject = {
+  type: "default",
+
   pool: undefined,
   setPool: function (pool: Pool) {
     return (this.pool = pool);
@@ -21,7 +23,17 @@ const _: Types.DataBaseInfoObject = {
   },
 };
 
-export function init(type: "default" | "no-db", options?: Types.TimeOptions) {
+export function init(
+  {
+    type,
+    options,
+  }: {
+    type: "default" | "no-db";
+    options?: Types.TimeOptions;
+  } = { type: "default", options: undefined }
+) {
+  _.type = type;
+
   switch (type) {
     case "default":
       _.setPool(
@@ -38,7 +50,6 @@ export function init(type: "default" | "no-db", options?: Types.TimeOptions) {
       if (options?.defaultTime) _.setTime(options.defaultTime);
       else if (options?.timeRange) _.setTime(Date.now() - options.timeRange.getTime());
       else throw new Error("SL: No default time for no-db init");
-
       break;
     default:
       break;
@@ -64,6 +75,8 @@ export async function getSavedTime(): Promise<Types.DBTime> {
 }
 
 export async function saveTime(newTime: number) {
+  if (_.type === "no-db") return;
+
   try {
     const pool = _.getPool();
     const time = _.getTime();

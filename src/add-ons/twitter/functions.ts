@@ -54,8 +54,15 @@ export default class TwitterURLMessage {
     console.log("Resending twitter URLs");
 
     const twitterURLs = this.locations.filter((l) => l.includes("twitter.com"));
+    const thisURL = this.message.content.match(
+      /http[s]?:\/\/twitter\.com\/[\w_]+\/status\/\d{1,}/g
+    );
 
     for (const url of twitterURLs) {
+      if (thisURL && url.includes(thisURL[0])) {
+        console.log("URLs are equal");
+        continue;
+      }
       console.log("Sending twitter URLs");
       const message = await this.message.channel.send(`--temp ${url}`);
       setTimeout(async () => {

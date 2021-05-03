@@ -3,11 +3,19 @@ import * as child_process from "child_process";
 
 export interface AppOptions {
   name: string;
-  args: string[];
+  id?: number;
+  args?: any;
+}
+
+interface Application {
+  id: number;
+  type: string;
+  app: child_process.ChildProcess;
 }
 
 class Manager {
-  Apps: Map<string, child_process.ChildProcess> = new Map();
+  Apps: Map<number, Application> = new Map();
+  private running = 0;
 
   constructor(app: "all" | "nothing", exeption: string[] = [""]) {
     if (app === "nothing") {
@@ -24,7 +32,7 @@ class Manager {
         console.log(files);
 
         files.forEach((file) => {
-          this.startApp(file.name);
+          this.startApp({ name: file.name });
         });
       })
       .catch((e) => {
@@ -32,38 +40,35 @@ class Manager {
       });
   }
 
-  async startApp(name: string, args: string[] = [""]) {
+  async startApp({ name: type, args = [""] }: AppOptions) {
     try {
       const files = await fs.readdir("./add-ons", { withFileTypes: true });
-      if (!files.some((e) => e.name === name)) {
+      if (!files.some((e) => e.name === type)) {
         console.log("No such file");
         return false;
       }
 
       const App = child_process.fork(`./index`, [...args], {
-        cwd: `./add-ons/${name}`,
+        cwd: `./add-ons/${type}`,
       });
+      const id = this.running++;
 
       App.stdout?.on("data", (data) => {
-        console.log(`OUT in ${name.toUpperCase()}: ${data}`);
+        console.log(`OUT in ${type.toUpperCase()}: ${data}`);
       });
 
       App.stderr?.on("data", (data) => {
-        console.error(`ERROR in ${name.toUpperCase()}: ${data}`);
+        console.error(`ERROR in ${type.toUpperCase()}: ${data}`);
       });
 
       App.on("close", (code) => {
-        console.log(
-          `child process ${name.toUpperCase()} exited with code ${code}.\nApp is killed: ${
-            this.Apps.get(name)?.killed
-          }`
-        );
+        console.log(`child process ${type.toUpperCase()}_${id} exited with code ${code}.`);
 
-        this.Apps.delete(name);
+        this.Apps.delete(id);
       });
 
-      this.Apps.set(name, App);
-
+      this.Apps.set(id, { id, type, app: App });
+      // App.send({args});
       return true;
     } catch (e) {
       console.error(e);
@@ -71,13 +76,41 @@ class Manager {
     }
   }
 
-  stopApp(name: string) {
-    if (this.Apps.has(name)) {
-      this.Apps.get(name)?.kill();
-      this.Apps.delete(name);
-      return true;
+  async stopApp(id: number | undefined) {
+    debugger;
+    if (typeof id !== "number") return Promise.resolve(undefined);
+
+    if (this.Apps.has(id)) {
+      try {
+        if (!this.Apps.get(id)?.app.kill()) throw new Error("SL: Error app killing");
+      } catch (e) {
+        console.error(e);
+        return Promise.resolve(undefined);
+      }
+
+      const info = this.Apps.get(id) as Application;
+
+      this.running--;
+      this.Apps.delete(id);
+
+      return Promise.resolve({ type: info.type, id: info.id });
     }
-    return false;
+    return Promise.resolve(undefined);
+  }
+
+  getAppByID(id: number) {
+    return this.Apps.get(id);
+  }
+
+  showApps() {
+    let text = "";
+    for (const [id, value] of this.Apps.entries()) {
+      text += `[${id}]: ${value.type.toUpperCase()}\n`;
+    }
+
+    console.log(text.trim());
+
+    return text.trim();
   }
 }
 
