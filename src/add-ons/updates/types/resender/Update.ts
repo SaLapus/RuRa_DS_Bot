@@ -1,0 +1,25 @@
+import { ParentChapter } from "../api";
+
+export interface Update {
+  meta: MetaInfo;
+
+  title: string;
+  chapters?: ParentChapter[];
+  annotation: string;
+  staff: {
+    [name: string]: string[];
+  };
+  doneStatus: boolean;
+
+  description: string;
+
+  updateURL: string;
+  coverURL: string;
+
+  getCover: () => Promise<Buffer>;
+}
+
+interface MetaInfo {
+  projectID: number;
+  volumeID: number;
+}

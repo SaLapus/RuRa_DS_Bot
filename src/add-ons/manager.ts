@@ -4,7 +4,7 @@ import * as child_process from "child_process";
 export interface AppOptions {
   name: string;
   id?: number;
-  args?: any;
+  args?: string[];
 }
 
 interface Application {
@@ -25,7 +25,7 @@ class Manager {
 
     fs.readdir("./add-ons", { withFileTypes: true })
       .then((f) => {
-        let files = f
+        const files = f
           .filter((e) => e.isDirectory())
           .filter((e) => !exeption.some((name) => name === e.name));
 
@@ -40,7 +40,7 @@ class Manager {
       });
   }
 
-  async startApp({ name: type, args = [""] }: AppOptions) {
+  async startApp({ name: type, args = [""] }: AppOptions): Promise<boolean> {
     try {
       const files = await fs.readdir("./add-ons", { withFileTypes: true });
       if (!files.some((e) => e.name === type)) {
@@ -68,7 +68,7 @@ class Manager {
       });
 
       this.Apps.set(id, { id, type, app: App });
-      // App.send({args});
+
       return true;
     } catch (e) {
       console.error(e);
@@ -76,8 +76,7 @@ class Manager {
     }
   }
 
-  async stopApp(id: number | undefined) {
-    debugger;
+  async stopApp(id: number | undefined): Promise<{ type: string; id: number } | undefined> {
     if (typeof id !== "number") return Promise.resolve(undefined);
 
     if (this.Apps.has(id)) {
@@ -98,11 +97,11 @@ class Manager {
     return Promise.resolve(undefined);
   }
 
-  getAppByID(id: number) {
+  getAppByID(id: number): Application | undefined {
     return this.Apps.get(id);
   }
 
-  showApps() {
+  showApps(): string {
     let text = "";
     for (const [id, value] of this.Apps.entries()) {
       text += `[${id}]: ${value.type.toUpperCase()}\n`;

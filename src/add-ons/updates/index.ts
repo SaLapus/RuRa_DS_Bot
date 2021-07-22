@@ -1,28 +1,21 @@
-import { IndexOptions, APITypes, ReSenderInfo } from "./types";
+import * as APITypes from "./types/api";
 
-import * as Updates from "./functions";
-import * as DB from "./db";
+import { DataBase } from "./modules/db";
+import { IDataBase } from "./types/db";
+import Listener from "./modules/sender/listener";
 
-import Update from "./modules/update";
-import ReSender from "./modules/resender";
+import Update from "./modules/sender/update";
+import * as ReSender from "./types/resender";
 
-const options: IndexOptions = {
-  noDB: false,
+import * as Discord from "discord.js";
+import needle from "needle";
 
-  debug: false,
-
-  noLoop: true,
-
-  DBTime: {},
-};
+let hook: Discord.WebhookClient;
 
 setSettings();
-//noDB
-DB.init(options.noDB ? { type: "no-db", options: options.DBTime } : undefined);
-shedule();
 
-//noLoop
-Updates.APIRequestsOptions.noLoop = options.noLoop;
+const DB: IDataBase = new DataBase(process.env.OFFLINE_DB);
+const UpdatesListener = new Listener(DB);
 
 function setSettings() {
   const args = process.argv
@@ -43,51 +36,32 @@ function setSettings() {
       case "no-db":
         if (!arg.value) throw new Error("There are no args for NoDB call");
 
-        let time: number = new Date(0).getTime();
+        let time: number = new Date().getTime();
 
         const days = arg.value.match(/(\d+)days/);
         const hours = arg.value.match(/(\d+)hours/);
 
         if (days || hours) {
           if (days) {
-            time += new Date(0).setUTCHours(parseInt(days[1], 10) * 24);
+            time -= new Date(0).setUTCHours(parseInt(days[1], 10) * 24);
           }
 
           if (hours) {
-            time += new Date(0).setUTCHours(parseInt(hours[1], 10));
+            time -= new Date(0).setUTCHours(parseInt(hours[1], 10));
           }
-
-          options.DBTime.timeRange = new Date(time);
         } else {
           time = parseInt(arg.value, 10);
-          options.DBTime.defaultTime = time;
         }
 
-        options.noDB = true;
+        process.env.OFFLINE_DB = "" + time;
 
-        break;
-      case "debug":
-        options.debug = true;
         break;
       case "long":
-        options.noLoop = false;
+        process.env.API_LOOPING = "ALLOW_API_LOOPING";
         break;
       case "last":
-        Updates.getUpdates(1)
-          .then(async (u) => {
-            if (!u) throw new Error("NO FAST UPDATE");
-
-            const update = new Update(u);
-            const a: ReSenderInfo.Data = {
-              type: "rura-update",
-              debug: options.debug,
-              extended: await update.createUpdate(),
-            };
-            return ReSender(a);
-          })
-          .then(() => {
-            process.exit();
-          });
+        process.env.ONLY_ONE_POST = "ONLY_ONE_POST";
+        process.env.OFFLINE_DB = "" + new Date().getTime();
     }
   }
 }
@@ -95,71 +69,62 @@ function setSettings() {
 /*
 Правильная настройка времени
 */
-function shedule() {
-  let timeout = new Date(0).setUTCHours(0, 10) - (Date.now() % new Date(0).setUTCHours(0, 15));
 
-  if (timeout < 0) {
-    timeout = new Date(0).setUTCHours(0, 5) + timeout;
+UpdatesListener.on("update", updateHandler);
 
-    console.log("Start at ", new Date(new Date().getTime() + timeout));
+UpdatesListener.start();
 
-    setTimeout(() => {
-      setTimeout(checkUpdates, 30 * 1000); // Задержка для избежания проверки до релиза
+async function updateHandler(u: APITypes.VolumeUpdates.Content) {
+  try {
+    const time = await DB.getSavedTime();
 
-      setInterval(() => {
-        setTimeout(checkUpdates, 30 * 1000); // Задержка для избежания проверки до релиза
-      }, 5 * 60 * 1000);
-    }, timeout);
-    return;
+    if (!time) throw new Error("SL ERROR: NULLABLE TIME --- DROP UPDATE");
+
+    const update = await new Update(u).createUpdate(time);
+    sendUpdate(update).then(() => {
+      if (process.env.ONLY_ONE_POST === "ONLY_ONE_POST") {
+        process.exit();
+      }
+    });
+  } catch (e) {
+    console.error(e);
   }
-
-  console.log("Start at ", new Date(new Date().getTime() + timeout));
-
-  setTimeout(() => {
-    setInterval(() => {
-      setTimeout(checkUpdates, 30 * 1000); // Задержка для избежания проверки до релиза
-    }, 5 * 60 * 1000);
-  }, timeout);
 }
 
-async function checkUpdates() {
-  const updates = await getAllUpdates();
+async function sendUpdate(update: ReSender.Update): Promise<void> {
+  if (process.env.NODE_ENV === "DEBUG" || process.env.NODE_ENV === "LOCAL")
+    hook = new Discord.WebhookClient(
+      process.env.HOOK_CAPTAINHOOK_ID as string,
+      process.env.HOOK_CAPTAINHOOK_TOKEN as string
+    );
+  else
+    hook = new Discord.WebhookClient(
+      process.env.HOOK_RURA_ID as string,
+      process.env.HOOK_RURA_TOKEN as string
+    );
 
-  if (updates.length === 0) {
-    console.log("No Updates");
-    return;
-  }
+  const text = update.toString();
+  const imgBuffer = await update.getCover();
 
-  const titles: Map<string, APITypes.VolumeUpdate.Content> = new Map();
+  const message = await hook.send(text, new Discord.MessageAttachment(imgBuffer));
 
-  for (const u of updates) titles.set(`${u.projectId}_${u.volumeId}`, u);
-
-  for (const u of titles.values()) {
-    const update = new Update(u);
-    const a: ReSenderInfo.Data = {
-      type: "rura-update",
-      debug: options.debug,
-      extended: await update.createUpdate(),
-    };
-    ReSender(a);
-    // if (process.send) process.send({ type: "rura-update", debug: options.debug, extended: await update.createUpdate() });
-  }
-
-  Updates.updateTime(updates.map((e) => e.showTime));
+  const interval = setInterval(() => editMessage(message.id, update), /*15 * 60*/30 * 1000);
+  setTimeout(() => clearInterval(interval), 4 * 60 * 60 * 1000);
 }
 
-async function getAllUpdates(number = 1): Promise<APITypes.VolumeUpdate.Content[]> {
-  const updates: APITypes.VolumeUpdate.Content[] = [];
-  let relevance = false;
-  do {
-    const update = await Updates.getUpdates(number++);
+function editMessage(messageID: string, update: ReSender.Update) {
+  const data = {
+    content: update.toString(),
+    allowed_mentions: {
+      roles: ["800119277985988638"],
+    },
+  };
 
-    if (!update) throw new Error("INDEX_UPDATES_ERROR: Empty Update");
-
-    relevance = await Updates.checkRelevance(update);
-
-    if (relevance) updates.push(update);
-  } while (relevance);
-
-  return updates;
+  needle.patch(
+    `https://discord.com/api/webhooks/${hook.id}/${hook.token}/messages/${messageID}`,
+    data,
+    (err, res) => {
+      console.log(`EDIT WEBHOOK MESSAGE STATUS: ${res.statusCode}`);
+    }
+  );
 }

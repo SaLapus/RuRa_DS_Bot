@@ -19,9 +19,7 @@ Bot.on("message", async (message: Discord.Message) => {
 
   if (!message.content.startsWith("!")) return;
 
-  const args: string[] = message.content
-    .split(" ")
-    .filter((arg) => arg && arg !== " ".repeat(arg.length));
+  const args: string[] = message.content.split(" ").filter((arg) => arg);
 
   if (args.length < 2) {
     message.reply("No args");
@@ -39,10 +37,10 @@ Bot.on("message", async (message: Discord.Message) => {
     case "!app":
       break;
     case "!test":
-      command.args.push("--debug");
+      process.env.NODE_ENV = "DEBUG";
       break;
     case "!local":
-      if (process.env.NODE_ENV !== "local") return;
+      if (process.env.NODE_ENV !== "LOCAL") return;
       break;
     default:
       return;
@@ -85,10 +83,11 @@ Bot.on("message", async (message: Discord.Message) => {
       const stopedApp = await manager.stopApp(id);
 
       if (stopedApp) message.reply(`${stopedApp.type.toUpperCase()}: stop`);
-      else
+      else{
+        message.reply(`Stop... But what should I stop?..`);
         console.log(
           `${command.name?.toUpperCase()}: Unknown name of app or this app is not running.`
-        );
+        );}
       break;
 
     case "show":
@@ -120,10 +119,11 @@ RuRaColor.on("message", async (message: Discord.Message) => {
 });
 
 RuRaColor.on("message", (message) => {
+  // color: Bad_Boy 247121681133469696 Sun Jun 27 2021 17:34:55 GMT+0000 (Coordinated Universal Time)
   console.log(
     `${(message.channel as Discord.TextChannel).name}: ${message.author.username} ${
       message.channel.id
-    } ${message.createdAt}`
+    } ${message.channel.id === "247121681133469696" ? message.content : ""} ${message.createdAt}`
   );
 });
 

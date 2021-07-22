@@ -1,4 +1,4 @@
-import { APITypes } from "../types";
+import * as APITypes from "../../types/api";
 
 export default class Chapters {
   data: (APITypes.ParentChapter | APITypes.Chapter)[];
@@ -7,7 +7,10 @@ export default class Chapters {
     this.data = sortChapters(chapters);
   }
 
-  filter(oldness: string) {
+  filter(oldness: number | null | undefined): APITypes.ParentChapter[] {
+    if (!oldness)
+      return [this.data.filter((ch) => ch.publishDate !== null).pop()] as APITypes.ParentChapter[];
+
     return this.data.filter(
       (ch) => new Date(ch.publishDate) >= new Date(oldness)
     ) as APITypes.ParentChapter[];
