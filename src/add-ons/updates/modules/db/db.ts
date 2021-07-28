@@ -48,6 +48,8 @@ export default class DataBase implements DBTypes.IDataBase {
   }
 
   async saveTime(newTime: number): Promise<void> {
+    if (this.time && this.time.getTime() > newTime) return;
+
     if (this.offline) {
       this.time = new Date(newTime);
       return;
@@ -58,8 +60,8 @@ export default class DataBase implements DBTypes.IDataBase {
       const time = this.time;
 
       const client = await pool.connect();
-      console.log(`UPDATE time SET date = ${newTime} WHERE date = ${time};`);
-      await client.query("UPDATE time SET date = $1 WHERE date = $2;", [newTime, time]);
+      console.log(`UPDATE time SET date = ${newTime} WHERE date = ${time?.getTime()};`);
+      await client.query("UPDATE time SET date = $1 WHERE date = $2;", [newTime, time?.getTime()]);
 
       client.release();
       this.time = new Date(newTime);
