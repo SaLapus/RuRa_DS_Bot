@@ -83,11 +83,12 @@ Bot.on("message", async (message: Discord.Message) => {
       const stopedApp = await manager.stopApp(id);
 
       if (stopedApp) message.reply(`${stopedApp.type.toUpperCase()}: stop`);
-      else{
+      else {
         message.reply(`Stop... But what should I stop?..`);
         console.log(
           `${command.name?.toUpperCase()}: Unknown name of app or this app is not running.`
-        );}
+        );
+      }
       break;
 
     case "show":
@@ -123,7 +124,9 @@ RuRaColor.on("message", (message) => {
   console.log(
     `${(message.channel as Discord.TextChannel).name}: ${message.author.username} ${
       message.channel.id
-    } ${message.channel.id === "247121681133469696" ? message.content : ""} ${message.createdAt}`
+    }${message.channel.id === "247121681133469696" ? `\n${message.content}\n` : " "}${
+      message.createdAt
+    }`
   );
 });
 

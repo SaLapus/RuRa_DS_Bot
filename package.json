@@ -4,16 +4,29 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest"
+  },
+  "jest": {
+    "setupFiles": [
+      "dotenv/config"
+    ]
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@babel/core": "^7.14.8",
+    "@babel/preset-env": "^7.14.8",
+    "@babel/preset-typescript": "^7.14.5",
+    "@types/jest": "^26.0.24",
     "@types/needle": "^2.5.1",
     "@typescript-eslint/eslint-plugin": "^4.9.0",
     "@typescript-eslint/parser": "^4.9.0",
-    "eslint": "^7.14.0"
+    "babel-jest": "^27.0.6",
+    "dotenv": "^10.0.0",
+    "eslint": "^7.14.0",
+    "jest": "^27.0.6",
+    "ts-node": "^10.1.0"
   },
   "dependencies": {
     "@types/pg": "^7.14.4",

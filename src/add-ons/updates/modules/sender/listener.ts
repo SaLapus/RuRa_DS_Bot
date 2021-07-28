@@ -25,7 +25,6 @@ export default class UpdatesClient extends EventEmitter implements ReSender.Clie
   private async getLastUpdate(): Promise<void> {
     const u = await API.getUpdate(1);
     if (u) {
-      this.DB.saveTime(new Date(u?.showTime).getTime());
       this.emit("update", u);
     }
   }
@@ -45,19 +44,19 @@ export default class UpdatesClient extends EventEmitter implements ReSender.Clie
           setTimeout(() => this.checkUpdates(), 30 * 1000); // Задержка для избежания проверки до релиза
         }, 5 * 60 * 1000);
       }, timeout);
+    } else {
+      console.log("Start at ", new Date(new Date().getTime() + timeout));
+
+      setTimeout(() => {
+        return setInterval(() => {
+          setTimeout(() => this.checkUpdates(), 30 * 1000); // Задержка для избежания проверки до релиза
+        }, 5 * 60 * 1000);
+      }, timeout);
     }
-
-    console.log("Start at ", new Date(new Date().getTime() + timeout));
-
-    setTimeout(() => {
-      return setInterval(() => {
-        setTimeout(() => this.checkUpdates(), 30 * 1000); // Задержка для избежания проверки до релиза
-      }, 5 * 60 * 1000);
-    }, timeout);
   }
 
   private async checkUpdates() {
-    const updates = await this.getAllUpdates();
+    let updates = await this.getAllUpdates();
 
     if (updates.length === 0) {
       console.log("No Updates");
@@ -68,7 +67,11 @@ export default class UpdatesClient extends EventEmitter implements ReSender.Clie
 
     for (const u of updates) titles.set(`${u.projectId}_${u.volumeId}`, u);
 
-    for (const u of titles.values()) {
+    updates = [...titles.values()].sort(
+      (t1, t2) => new Date(t1.showTime).getTime() - new Date(t2.showTime).getTime()
+    );
+
+    for (const u of updates) {
       this.emit("update", u);
     }
   }

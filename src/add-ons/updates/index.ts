@@ -1,11 +1,11 @@
 import * as APITypes from "./types/api";
 
 import { DataBase } from "./modules/db";
-import { IDataBase } from "./types/db";
-import Listener from "./modules/sender/listener";
 
+import Listener from "./modules/sender/listener";
 import Update from "./modules/sender/update";
-import * as ReSender from "./types/resender";
+
+import { IDataBase } from "./types/db";
 
 import * as Discord from "discord.js";
 import needle from "needle";
@@ -66,10 +66,6 @@ function setSettings() {
   }
 }
 
-/*
-Правильная настройка времени
-*/
-
 UpdatesListener.on("update", updateHandler);
 
 UpdatesListener.start();
@@ -80,18 +76,21 @@ async function updateHandler(u: APITypes.VolumeUpdates.Content) {
 
     if (!time) throw new Error("SL ERROR: NULLABLE TIME --- DROP UPDATE");
 
-    const update = await new Update(u).createUpdate(time);
-    sendUpdate(update).then(() => {
-      if (process.env.ONLY_ONE_POST === "ONLY_ONE_POST") {
-        process.exit();
-      }
-    });
+    const title = new Update(u, time);
+
+    const message = await sendUpdate(title);
+
+    if (process.env.ONLY_ONE_POST === "ONLY_ONE_POST") process.exit();
+
+    editMessage(message.id, title);
+
+    DB.saveTime(new Date(u?.showTime).getTime());
   } catch (e) {
     console.error(e);
   }
 }
 
-async function sendUpdate(update: ReSender.Update): Promise<void> {
+async function sendUpdate(title: Update): Promise<Discord.Message> {
   if (process.env.NODE_ENV === "DEBUG" || process.env.NODE_ENV === "LOCAL")
     hook = new Discord.WebhookClient(
       process.env.HOOK_CAPTAINHOOK_ID as string,
@@ -103,28 +102,32 @@ async function sendUpdate(update: ReSender.Update): Promise<void> {
       process.env.HOOK_RURA_TOKEN as string
     );
 
+  const update = await title.createUpdate();
   const text = update.toString();
   const imgBuffer = await update.getCover();
 
-  const message = await hook.send(text, new Discord.MessageAttachment(imgBuffer));
-
-  const interval = setInterval(() => editMessage(message.id, update), /*15 * 60*/30 * 1000);
-  setTimeout(() => clearInterval(interval), 4 * 60 * 60 * 1000);
+  return await hook.send(text, new Discord.MessageAttachment(imgBuffer));
 }
 
-function editMessage(messageID: string, update: ReSender.Update) {
-  const data = {
-    content: update.toString(),
-    allowed_mentions: {
-      roles: ["800119277985988638"],
-    },
-  };
+function editMessage(messageID: string, title: Update) {
+  const interval = setInterval(async () => {
+    const update = await title.createUpdate();
 
-  needle.patch(
-    `https://discord.com/api/webhooks/${hook.id}/${hook.token}/messages/${messageID}`,
-    data,
-    (err, res) => {
-      console.log(`EDIT WEBHOOK MESSAGE STATUS: ${res.statusCode}`);
-    }
-  );
+    const data = {
+      content: update.toString(),
+      allowed_mentions: {
+        roles: [process.env.ROLE_TO_PING_ID],
+      },
+    };
+
+    needle.patch(
+      `https://discord.com/api/webhooks/${hook.id}/${hook.token}/messages/${messageID}`,
+      data,
+      (err, res) => {
+        console.log(`EDIT WEBHOOK MESSAGE STATUS: ${res.statusCode}`);
+      }
+    );
+  }, 15 * 60 * 1000);
+
+  setTimeout(() => clearInterval(interval), new Date(0).setHours(4, 1));
 }

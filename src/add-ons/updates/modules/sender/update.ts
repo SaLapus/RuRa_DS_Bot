@@ -1,7 +1,7 @@
 import { API } from "./../api";
 import Chapters from "./chapters";
 
-import { Annotation, ParentChapter, Volume, VolumeUpdates, Worker } from "./../../types/api";
+import { Annotation, ParentChapter, Volume, Worker } from "./../../types/api";
 import * as ReSender from "./../../types/resender";
 
 export default class UpdateInfoLoader {
@@ -10,14 +10,24 @@ export default class UpdateInfoLoader {
     volumeID: number;
   } = { projectID: 0, volumeID: 0 }; //заглушка
 
-  constructor(update: VolumeUpdates.Content) {
+  lastUpdateDate: Date = new Date(0);
+
+  constructor(
+    { projectId, volumeId }: { projectId: number; volumeId: number },
+    TimeOfLastPost: Date
+  ) {
+    if (!projectId || !volumeId || !TimeOfLastPost)
+      throw new Error(`NO DATA FOR UPDATECLIENT\nPID: ${projectId} VID: ${volumeId}`);
+
     this.info = {
-      projectID: update.projectId,
-      volumeID: update.volumeId,
+      projectID: projectId,
+      volumeID: volumeId,
     };
+
+    this.lastUpdateDate = TimeOfLastPost;
   }
 
-  async createUpdate(TimeOfLastPost: Date): Promise<ReSender.Update> {
+  async createUpdate(): Promise<ReSender.Update> {
     const update = new Update(this.info);
 
     const volume = await this.loadVolumeInfo();
@@ -32,14 +42,12 @@ export default class UpdateInfoLoader {
     update.setUpdateURL(volume.fullUrl);
     update.setCoverURL(volume.covers?.shift()?.url);
 
-    const lastPostTime = process.env.NODE_ENV !== "LOCAL" ? TimeOfLastPost : null;
-
-    update.chapters = new Chapters(volume.chapters).filter(lastPostTime?.getTime());
+    update.chapters = new Chapters(volume.chapters).filter(this.lastUpdateDate.getTime());
 
     return update;
   }
 
-  async loadVolumeInfo(): Promise<Volume> {
+  private async loadVolumeInfo(): Promise<Volume> {
     return await API.getVolume(this.info.volumeID);
   }
 }
@@ -124,7 +132,7 @@ class Update implements ReSender.Update {
       .filter((_, index, array) => index === 0 || index === array.length - 1)
       .join(" - ");
     const staff = Object.entries(this.staff)
-      .map(([role, workers]) => `${role}: *${workers.join('*, *')}*`)
+      .map(([role, workers]) => `${role}: *${workers.join("*, *")}*`)
       .join("\n");
 
     return `**${this.title}** - ${parsedChapters}

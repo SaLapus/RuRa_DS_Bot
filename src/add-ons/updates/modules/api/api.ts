@@ -9,6 +9,8 @@ export async function getProject(id: number): Promise<APITypes.Project> {
   console.log(`PROJECT REQUEST`);
   console.log(`ID: ${id}`);
 
+  if (!id) throw new Error("NO PROJECT ID");
+
   const responce = await needle(
     "post",
     `${process.env.HOST_VOLUME}/api/site/v2/graphql`,
@@ -27,8 +29,9 @@ export async function getProject(id: number): Promise<APITypes.Project> {
 }
 
 export async function getUpdate(
-  offset: number
+  offset = 1
 ): Promise<APITypes.VolumeUpdates.Content | undefined> {
+
   if (process.env.API_LOOPING !== "ALLOW_API_LOOPING" && offset && offset > 50) {
     throw new Error("Too may requests");
   }
@@ -56,6 +59,8 @@ export async function getUpdate(
 export async function getVolume(id: number): Promise<APITypes.Volume> {
   console.log(`VOLUME REQUEST`);
   console.log(`ID: ${id}`);
+
+  if (!id) throw new Error("NO VOLUME ID");
 
   const responce = await needle(
     "post",

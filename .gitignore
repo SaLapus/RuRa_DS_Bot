@@ -8,3 +8,5 @@ leha_hook
 env.js
 .prettierrc.json
 .eslintrc.json
+.env
+package-lock.json

@@ -1,7 +1,6 @@
 import { Pool } from "pg";
 
 import * as DBTypes from "../../types/db";
-import * as APITypes from "../../types/api";
 
 export default class DataBase implements DBTypes.IDataBase {
   offline = false;
@@ -41,8 +40,10 @@ export default class DataBase implements DBTypes.IDataBase {
       this.offline = true;
       if (typeof options === "number") this.time = new Date(options);
       else if (options instanceof Date) this.time = options;
-      else if (typeof options === "string") this.time = new Date(parseInt(options, 10));
-      else throw new Error(`SL ERROR: OPTIONS are not valid\ntype of OPTIONS: ${typeof options}`);
+      else if (typeof options === "string") {
+        if (isNaN(new Date(options).getTime())) this.time = new Date(parseInt(options, 10));
+        else this.time = new Date(options);
+      } else throw new Error(`SL ERROR: OPTIONS are not valid\ntype of OPTIONS: ${typeof options}`);
     }
   }
 
@@ -87,7 +88,7 @@ export default class DataBase implements DBTypes.IDataBase {
     return null;
   }
 
-  async checkRelevance(update: APITypes.VolumeUpdates.Content): Promise<boolean> {
+  async checkRelevance(update: { showTime: string }): Promise<boolean> {
     const date = await this.getSavedTime();
 
     if (date && update.showTime) {
