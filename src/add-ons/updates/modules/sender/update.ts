@@ -63,8 +63,6 @@ class Update implements ReSender.Update {
   } = {};
   doneStatus = false;
 
-  description = "";
-
   updateURL = "";
   coverURL = "";
 
@@ -76,11 +74,11 @@ class Update implements ReSender.Update {
     this.title = t ? t.trim() : "";
   }
 
-  async setAnnotation(annotation: Annotation | string | undefined, projectId: number) {
-    if (typeof annotation === "string") this.annotation = annotation;
-    else if (annotation?.text) {
-      const text = annotation.text.replace(/<\/?.+?>/g, "").trim();
-      this.annotation = text || (await API.getProject(projectId)).shortDescription;
+  async setAnnotation(annotation: Annotation | undefined, projectId: number) {
+    if (annotation) {
+      if (annotation.text) this.annotation = annotation.text.replace(/<\/?.+?>/g, "").trim();
+    } else {
+      this.annotation = (await API.getProject(projectId)).shortDescription;
     }
   }
 

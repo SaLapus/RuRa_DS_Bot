@@ -11,8 +11,6 @@ export interface Update {
   };
   doneStatus: boolean;
 
-  description: string;
-
   updateURL: string;
   coverURL: string;
 
