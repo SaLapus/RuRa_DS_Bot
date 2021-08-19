@@ -75,11 +75,14 @@ class Update implements ReSender.Update {
   }
 
   async setAnnotation(annotation: Annotation | undefined, projectId: number) {
-    if (annotation) {
-      if (annotation.text) this.annotation = annotation.text.replace(/<\/?.+?>/g, "").trim();
-    } else {
-      this.annotation = (await API.getProject(projectId)).shortDescription;
+    if (annotation && annotation.text) {
+      const text = annotation.text.replace(/<\/?.+?>/g, "").trim();
+      if (text) {
+        this.annotation = text;
+        return;
+      }
     }
+    this.annotation = (await API.getProject(projectId)).shortDescription;
   }
 
   setStaff(staff: Worker[] | undefined) {
