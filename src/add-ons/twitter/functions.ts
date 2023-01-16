@@ -27,7 +27,7 @@ export default class TwitterURLMessage {
     this.content = message.content.split("\n").join(" \\ ");
   }
 
-  async parseEmbeds() {
+  async parseEmbeds(): Promise<void> {
     console.log("Parsing embeds");
 
     const message = (this.message = await this.message.fetch());
@@ -50,7 +50,9 @@ export default class TwitterURLMessage {
     }
   }
 
-  async reSendTwitterURLs(reactChain: (message: TwitterURLMessage) => Promise<Discord.Message>) {
+  async reSendTwitterURLs(
+    reactChain: (message: TwitterURLMessage) => Promise<Discord.Message>
+  ): Promise<void> {
     console.log("Resending twitter URLs");
 
     const twitterURLs = this.locations.filter((l) => l.includes("twitter.com"));
@@ -76,7 +78,7 @@ export default class TwitterURLMessage {
     }
   }
 
-  reactURLs() {
+  reactURLs(): void {
     console.log("Reacting URLs");
     if (this.locations.some((l) => l.includes("imgur"))) {
       const url = this.content?.match(/http[s]?:\/\/twitter\.com\/[\w_]+\/status\/\d{1,}/g);
@@ -86,7 +88,7 @@ export default class TwitterURLMessage {
     }
   }
 
-  log() {
+  log(): Discord.Message {
     console.log("Logging");
     const message = this.message;
     console.log(JSON.stringify(Object.assign(this, { message: {} })));
@@ -96,14 +98,14 @@ export default class TwitterURLMessage {
 
 function checkURL(hashUrl: string): Promise<string | undefined> {
   return new Promise((resolve) => {
-    var options = {
+    const options = {
       hostname: "t.co",
       port: 443,
       path: `/${hashUrl}`,
       method: "GET",
     };
 
-    var req = https.request(options, function (res) {
+    const req = https.request(options, function (res) {
       if (res.headers["location"] != undefined) {
         console.log("Header was found");
         resolve(res.headers["location"]);
