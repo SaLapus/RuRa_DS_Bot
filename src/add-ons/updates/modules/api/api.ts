@@ -9,7 +9,7 @@ export async function getProject(id: number): Promise<APITypes.Project> {
   console.log(`PROJECT REQUEST`);
   console.log(`ID: ${id}`);
 
-  if (!id) throw new Error("NO PROJECT ID");
+  if (!id) throw new Error("getProject: NO PROJECT ID");
 
   const responce = await needle(
     "post",
@@ -28,12 +28,9 @@ export async function getProject(id: number): Promise<APITypes.Project> {
   return responce.body.data.project;
 }
 
-export async function getUpdate(
-  offset = 1
-): Promise<APITypes.VolumeUpdates.Content | undefined> {
-
-  if (process.env.API_LOOPING !== "ALLOW_API_LOOPING" && offset && offset > 50) {
-    throw new Error("Too may requests");
+export async function getUpdate(offset = 1): Promise<APITypes.VolumeUpdates.Content | undefined> {
+  if (offset && offset > 50) {
+    throw new Error("getUpdate: Too may requests");
   }
 
   console.log(`UPDATE OFFSET: ${offset}`);
@@ -60,7 +57,7 @@ export async function getVolume(id: number): Promise<APITypes.Volume> {
   console.log(`VOLUME REQUEST`);
   console.log(`ID: ${id}`);
 
-  if (!id) throw new Error("NO VOLUME ID");
+  if (!id) throw new Error("getVolume: NO VOLUME ID");
 
   const responce = await needle(
     "post",
@@ -102,5 +99,5 @@ async function getQuery(type: string): Promise<string> {
       encoding: "utf-8",
     });
 
-  throw new Error(`SL: No such type: ${type}`);
+  throw new Error(`getQuery: No such type: ${type}`);
 }
