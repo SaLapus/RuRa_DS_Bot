@@ -1,3 +1,3 @@
-import DataBase from "./db";
+import getDB from "./jsonStorage";
 
-export { DataBase };
+export default getDB;
