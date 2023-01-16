@@ -9,68 +9,76 @@ Bot.on("ready", () => {
 
 Bot.login(process.env.BOT_RURACOLOR_TOKEN).then((log) => {
   console.log("LOGIN: ", log);
-  
 });
 
 function setRandActivity() {
-  const Activities = (
-    memberName: string | undefined,
-    n: number
-  ): Discord.ActivityOptions => {
-    const nameReg = memberName?.match(/.*(?=#)/g) as RegExpMatchArray;
-    console.log("member: ", memberName, "name: ", nameReg);
+  const Activities = (name: string | undefined): Discord.ActivityOptions => {
+    if (!name) name = "Лапус";
 
-    const name = nameReg[0];
+    console.log("member: ", name, "name: ", name);
 
     const acts: Discord.ActivityOptions[] = [
-      { name: `как ${name} пьет пиво.`, type: "WATCHING" },
-      { name: `спам орехусами с ${name}.`, type: "PLAYING" },
-      { name: `покрас колора c  ${name}.`, type: "STREAMING" },
-      { name: `слак с ${name}.`, type: "PLAYING" },
-      { name: `жалобы от ${name}.`, type: "LISTENING" },
-      { name: ` ${name}. Страшно.`, type: "LISTENING" },
+      { name: `как ${name} пьет пиво.`, type: "CUSTOM_STATUS" },
+      { name: `спам орехусами с ${name}.`, type: "CUSTOM_STATUS" },
+      { name: `покрас колора c  ${name}.`, type: "CUSTOM_STATUS" },
+      { name: `слак с ${name}.`, type: "CUSTOM_STATUS" },
+      { name: `жалобы от ${name}.`, type: "CUSTOM_STATUS" },
+      { name: ` ${name}. Страшно.`, type: "CUSTOM_STATUS" },
     ];
 
-    return acts[n];
+    return acts[getRandomInt(acts.length)];
   };
 
-  const guild = Bot.guilds.cache.get("247110077163634688");
-  console.log("GUILD NAME: ", guild?.name);
-  const channel = guild?.channels.cache.get("703340270724579338");
+  Bot?.user
+    ?.setActivity(Activities(getRandomTag()))
+    .then((presence) => console.log(`Activity set to ${presence.activities[0].name}`))
+    .catch(console.error);
 
-  const member = guild?.members.cache.get("711920772834263122");
+  setInterval(
+    () =>
+      Bot?.user
+        ?.setActivity(Activities(getRandomTag()))
+        .then((presence) => console.log(`Activity set to ${presence.activities[0].name}`))
+        .catch(console.error),
+    10 * 60 * 1000
+  );
+}
 
-  console.log(member?.permissions.toArray());
+function getRandomTag() {
+  let name = "";
+  try {
+    const guild = Bot.guilds.cache.get("247110077163634688");
 
+    console.log("GUILD NAME: ", guild?.name);
 
-  // const membersToMention = channel?.members.clone();
-  // membersToMention?.delete("711920772834263122");
+    const channel = guild?.channels.cache.get("703340270724579338");
+    const member = guild?.members.cache.get("711920772834263122");
 
-  // console.log(membersToMention?.array().map((e) => e.user));
+    console.log(member?.permissions.toArray());
 
-  // Bot?.user
-  //   ?.setActivity(
-  //     Activities(membersToMention?.random()?.user?.tag, getRandomInt(6))
-  //   )
-  //   .then((presence) =>
-  //     console.log(`Activity set to ${presence.activities[0].name}`)
-  //   )
-  //   .catch(console.error);
+    const membersToMention = channel?.members.clone();
+    membersToMention?.delete("711920772834263122");
 
-  // setInterval(
-  //   () =>
-  //     Bot?.user
-  //       ?.setActivity(
-  //         Activities(membersToMention?.random()?.user?.tag, getRandomInt(6))
-  //       )
-  //       .then((presence) =>
-  //         console.log(`Activity set to ${presence.activities[0].name}`)
-  //       )
-  //       .catch(console.error),
-  //   10 * 60 * 1000
-  // );
+    console.log(membersToMention?.array().map((e) => e.user));
+
+    const tag = membersToMention?.random()?.user?.tag;
+
+    if (tag) name = fixTagtoName(tag);
+    else throw new Error("NO TAG TO SET ACTIVITY");
+  } catch (e) {
+    console.log(e);
+  }
+
+  return name;
 }
 
 function getRandomInt(max: number) {
   return Math.floor(Math.random() * Math.floor(max));
+}
+
+function fixTagtoName(tag: string): string {
+  const fixedTag = tag.match(/.*(?=#)/g);
+
+  if (!fixedTag) return tag;
+  else return fixedTag[0];
 }
