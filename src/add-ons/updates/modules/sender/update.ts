@@ -17,7 +17,7 @@ export default class UpdateInfoLoader {
     TimeOfLastPost: Date
   ) {
     if (!projectId || !volumeId || !TimeOfLastPost)
-      throw new Error(`NO DATA FOR UPDATECLIENT\nPID: ${projectId} VID: ${volumeId}`);
+      throw new Error(`NO DATA FOR UPDATE_CLIENT\nPID: ${projectId} VID: ${volumeId}`);
 
     this.info = {
       projectID: projectId,

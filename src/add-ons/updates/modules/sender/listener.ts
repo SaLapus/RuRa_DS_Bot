@@ -2,34 +2,31 @@ import EventEmitter from "events";
 
 import { API } from "../api";
 
+import getDB from "../db";
+
 import * as APITypes from "../../types/api";
-import { IDataBase } from "../../types/db";
+import { IJSONStorage } from "../../types/db";
 import * as ReSender from "../../types/resender";
 
 export default class UpdatesClient extends EventEmitter implements ReSender.Client {
-  DB: IDataBase;
+  DB: IJSONStorage;
 
-  constructor(db: IDataBase) {
+  private IntervalID?: NodeJS.Timeout;
+
+  constructor() {
     super();
 
-    this.DB = db;
+    this.DB = getDB();
   }
 
-  start(): void {
-    if (process.env.ONLY_ONE_POST === "ONLY_ONE_POST") this.getLastUpdate();
-    else if (process.env.NODE_ENV === "LOCAL" || process.env.NODE_ENV === "DEBUG")
-      this.checkUpdates();
-    else this.shedule();
-  }
-
-  private async getLastUpdate(): Promise<void> {
+  async getLastUpdate(): Promise<void> {
     const u = await API.getUpdate(1);
     if (u) {
       this.emit("update", u);
     }
   }
 
-  private shedule() {
+  shedule(): void {
     let timeout = new Date(0).setUTCHours(0, 10) - (Date.now() % new Date(0).setUTCHours(0, 15));
 
     if (timeout < 0) {
@@ -40,7 +37,7 @@ export default class UpdatesClient extends EventEmitter implements ReSender.Clie
       setTimeout(() => {
         setTimeout(() => this.checkUpdates(), 30 * 1000); // Задержка для избежания проверки до релиза
 
-        setInterval(() => {
+        this.IntervalID = setInterval(() => {
           setTimeout(() => this.checkUpdates(), 30 * 1000); // Задержка для избежания проверки до релиза
         }, 5 * 60 * 1000);
       }, timeout);
@@ -48,14 +45,14 @@ export default class UpdatesClient extends EventEmitter implements ReSender.Clie
       console.log("Start at ", new Date(new Date().getTime() + timeout));
 
       setTimeout(() => {
-        return setInterval(() => {
+        this.IntervalID = setInterval(() => {
           setTimeout(() => this.checkUpdates(), 30 * 1000); // Задержка для избежания проверки до релиза
         }, 5 * 60 * 1000);
       }, timeout);
     }
   }
 
-  private async checkUpdates() {
+  async checkUpdates(): Promise<void> {
     let updates = await this.getAllUpdates();
 
     if (updates.length === 0) {
@@ -71,8 +68,15 @@ export default class UpdatesClient extends EventEmitter implements ReSender.Clie
       (t1, t2) => new Date(t1.showTime).getTime() - new Date(t2.showTime).getTime()
     );
 
-    for (const u of updates) {
-      this.emit("update", u);
+    this.emit("update", updates);
+  }
+
+  stop(): void {
+    try {
+      if (!this.IntervalID) throw new Error("UPDATESCLIENT: NO SUCH INTERVAL ID");
+      clearInterval(this.IntervalID);
+    } catch (e) {
+      console.log(e);
     }
   }
 
@@ -84,11 +88,17 @@ export default class UpdatesClient extends EventEmitter implements ReSender.Clie
 
       if (!update) throw new Error("INDEX_UPDATES_ERROR: Empty Update");
 
-      relevance = await this.DB.checkRelevance(update);
+      relevance = this.checkRelevance(update);
 
       if (relevance) updates.push(update);
     } while (relevance);
 
     return updates;
+  }
+
+  private checkRelevance(update: APITypes.VolumeUpdates.Content): boolean {
+    const time = this.DB.getTime();
+
+    return time < new Date(update.showTime);
   }
 }
