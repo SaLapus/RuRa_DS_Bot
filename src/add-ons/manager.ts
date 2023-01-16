@@ -1,10 +1,13 @@
 import * as fs from "fs/promises";
 import * as child_process from "child_process";
+import path from "path";
+
+import { Action as UpdatesAction } from "./updates/types";
 
 export interface AppOptions {
   name: string;
   id?: number;
-  args?: string[];
+  args?: AppAction;
 }
 
 interface Application {
@@ -13,43 +16,53 @@ interface Application {
   app: child_process.ChildProcess;
 }
 
+export interface AppAction {
+  type: UpdatesAction | "stop";
+}
+
 class Manager {
   Apps: Map<number, Application> = new Map();
   private running = 0;
 
-  constructor(app: "all" | "nothing", exeption: string[] = [""]) {
-    if (app === "nothing") {
-      console.log("No AddOns was on");
-      return;
-    }
+  constructor() {
+    // if (app === "nothing") {
+    //   console.log("No AddOns was on");
+    //   return;
+    // }
 
-    fs.readdir("./add-ons", { withFileTypes: true })
-      .then((f) => {
-        const files = f
-          .filter((e) => e.isDirectory())
-          .filter((e) => !exeption.some((name) => name === e.name));
+    // fs.readdir("./add-ons", { withFileTypes: true })
+    //   .then((f) => {
+    //     const files = f
+    //       .filter((e) => e.isDirectory())
+    //       .filter((e) => !exeption.some((name) => name === e.name));
 
-        console.log(files);
+    //     console.log(files);
 
-        files.forEach((file) => {
-          this.startApp({ name: file.name });
-        });
-      })
-      .catch((e) => {
-        console.error(e);
-      });
+    //     files.forEach((file) => {
+    //       this.startApp({ name: file.name });
+    //     });
+    //   })
+    //   .catch((e) => {
+    //     console.error(e);
+    //   });
   }
 
-  async startApp({ name: type, args = [""] }: AppOptions): Promise<boolean> {
+  async startApp({ name: type, args }: AppOptions): Promise<boolean> {
     try {
-      const files = await fs.readdir("./add-ons", { withFileTypes: true });
+      const files = await fs.readdir(path.resolve(__dirname), { withFileTypes: true });
       if (!files.some((e) => e.name === type)) {
         console.log("No such file");
         return false;
       }
 
-      const App = child_process.fork(`./index`, [...args], {
-        cwd: `./add-ons/${type}`,
+      const childConfigPath = path.resolve(
+        process.cwd(),
+        "./config/.env-" + process.env.NODE_ENV?.toLowerCase()
+      );
+
+      const App = child_process.fork(`./index`, {
+        cwd: path.resolve(__dirname, type),
+        env: Object.assign(Object.create(process.env), { CHILD_ENV_PATH: childConfigPath }),
       });
       const id = this.running++;
 
@@ -66,6 +79,8 @@ class Manager {
 
         this.Apps.delete(id);
       });
+
+      if (args) App.send(args);
 
       this.Apps.set(id, { id, type, app: App });
 

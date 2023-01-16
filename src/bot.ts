@@ -1,101 +1,98 @@
 import * as Discord from "discord.js";
+import * as dotenv from "dotenv";
 
-import Manager, { AppOptions } from "./add-ons/manager";
+import Manager, { AppAction, AppOptions } from "./add-ons/manager";
 
-const manager = new Manager(
-  "all",
-  ["activity"] /*названия модулей, которые не планируются включать*/
-);
+dotenv.config({ path: "./config/.env" });
+
+const manager = new Manager();
+// "all",
+// ["twitter"] /*названия модулей, которые не планируются включать*/
 
 const Bot = new Discord.Client();
 
 Bot.on("ready", () => {
   console.log(`Test Logged in as ${Bot.user?.tag}!`);
   console.log("NODE_ENV: ", process.env.NODE_ENV);
-});
 
-Bot.on("message", async (message: Discord.Message) => {
-  if (message.author.id !== process.env.AUTHOR_ID) return;
-
-  if (!message.content.startsWith("!")) return;
-
-  const args: string[] = message.content.split(" ").filter((arg) => arg);
-
-  if (args.length < 2) {
-    message.reply("No args");
-    return;
-  }
-
-  const command = {
-    worker: args.shift(),
-    action: args.shift(),
-    name: args.length && !args[0].startsWith("--") ? args.shift() : "",
-    args,
-  };
-
-  switch (command.worker) {
-    case "!app":
-      break;
-    case "!test":
-      process.env.NODE_ENV = "DEBUG";
-      break;
-    case "!local":
-      if (process.env.NODE_ENV !== "LOCAL") return;
-      break;
-    default:
-      return;
-  }
-
-  const parsedArgs = {};
-
-  command.args.forEach((a) => {
-    if (a.match(/(?<=--)[\w-]+/)) {
-      const name = a.match(/(?<=--)[\w-]+/)?.shift() as string;
-      const value = a.match(/(?<==).+/) ? a.match(/(?<==).+/)?.shift() : true;
-
-      if (!Object.getOwnPropertyDescriptor(parsedArgs, name))
-        Object.assign(parsedArgs, {
-          [name]: value,
-        });
-    }
+  manager.startApp({
+    name: "updates",
+    args: {
+      type: "shedule",
+    },
   });
 
-  console.log(args);
-
-  switch (command.action) {
-    case "start":
-      if (!command.name) {
-        message.reply("No args");
-        return;
-      }
-
-      const app: AppOptions = {
-        name: command.name,
-        args: command.args,
-      };
-
-      const started = await manager.startApp(app);
-      if (started) message.reply(`${app.name.toUpperCase()}: start`);
-      break;
-
-    case "stop":
-      const id = parseInt(Object.getOwnPropertyDescriptor(parsedArgs, "id")?.value);
-      const stopedApp = await manager.stopApp(id);
-
-      if (stopedApp) message.reply(`${stopedApp.type.toUpperCase()}: stop`);
-      else {
-        message.reply(`Stop... But what should I stop?..`);
-        console.log(
-          `${command.name?.toUpperCase()}: Unknown name of app or this app is not running.`
-        );
-      }
-      break;
-
-    case "show":
-      message.reply(manager.showApps());
-      break;
-  }
+  manager.startApp({
+    name: "activity",
+  });
 });
+
+// Bot.on("message", async (message: Discord.Message) => {
+//   if (message.author.id !== process.env.AUTHOR_ID) return;
+
+//   if (!message.content.startsWith("!")) return;
+
+//   const args: string[] = message.content.split(" ").filter((arg) => arg);
+
+//   if (args.length < 2) {
+//     message.reply("No args");
+//     return;
+//   }
+
+//   const command = {
+//     worker: args.shift(),
+//     action: args.shift(),
+//     name: args.shift(),
+//     arg: args.shift()
+//   };
+
+//   switch (command.worker) {
+//     case "!app":
+//       break;
+//     case "!test":
+//       process.env.NODE_ENV = "DEBUG";
+//       break;
+//     case "!local":
+//       if (process.env.NODE_ENV !== "LOCAL") return;
+//       break;
+//     default:
+//       return;
+//   }
+
+//   switch (command.action) {
+//     case "start":
+//       if (!command.name) {
+//         message.reply("No args");
+//         return;
+//       }
+
+//       const app: AppOptions = {
+//         name: command.name,
+//         args: command.arg as unknown as AppAction, // сделать нормально
+//       };
+
+//       const started = await manager.startApp(app);
+//       if (started) message.reply(`${app.name.toUpperCase()}: start`);
+//       break;
+
+//     case "stop":
+//       const id = parseInt(Object.getOwnPropertyDescriptor(parsedArgs, "id")?.value);
+//       const stopedApp = await manager.stopApp(id);
+
+//       if (stopedApp) message.reply(`${stopedApp.type.toUpperCase()}: stop`);
+//       else {
+//         message.reply(`Stop... But what should I stop?..`);
+//         console.log(
+//           `${command.name?.toUpperCase()}: Unknown name of app or this app is not running.`
+//         );
+//       }
+//       break;
+
+//     case "show":
+//       message.reply(manager.showApps());
+//       break;
+//   }
+// });
 
 Bot.login(process.env.BOT_BORIS_TOKEN);
 
@@ -122,10 +119,14 @@ RuRaColor.on("message", async (message: Discord.Message) => {
 RuRaColor.on("message", (message) => {
   // color: Bad_Boy 247121681133469696 Sun Jun 27 2021 17:34:55 GMT+0000 (Coordinated Universal Time)
   console.log(
-    `${(message.channel as Discord.TextChannel).name}: ${message.author.username} ${
-      message.channel.id
-    }${message.channel.id === "247121681133469696" ? `\n${message.content}\n` : " "}${
-      message.createdAt
+    `${(message.channel as Discord.TextChannel).name.toUpperCase()} -> ${message.author.username} ${
+      message.createdAt.getUTCHours() + 3
+    }:${message.createdAt.getUTCMinutes()}\t${message.channel.id}${
+      message.channel.id === "247121681133469696"
+        ? `
+      ${message.content}
+      --------------------------`
+        : ""
     }`
   );
 });

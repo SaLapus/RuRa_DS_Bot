@@ -1,107 +1,73 @@
-import * as APITypes from "./types/api";
+import * as Discord from "discord.js";
+import needle from "needle";
+import * as dotenv from "dotenv";
 
-import { DataBase } from "./modules/db";
+dotenv.config({ path: process.env.CHILD_ENV_PATH });
+
+import { AppAction } from "../manager";
+import * as APITypes from "./types/api";
+import { IJSONStorage } from "./types/db";
+
+import getDB from "./modules/db";
 
 import Listener from "./modules/sender/listener";
 import Update from "./modules/sender/update";
 
-import { IDataBase } from "./types/db";
+const hook: Discord.WebhookClient = new Discord.WebhookClient(
+  process.env.HOOK_ID as string,
+  process.env.HOOK_TOKEN as string
+);
 
-import * as Discord from "discord.js";
-import needle from "needle";
+const DB: IJSONStorage = getDB();
+const UpdatesListener = new Listener();
 
-let hook: Discord.WebhookClient;
+UpdatesListener.on("update", updateHandler);
 
-setSettings();
+process.on("message", async (message: AppAction) => {
+  const { type: action } = message;
+  switch (action) {
+    case "shedule":
+      UpdatesListener.shedule();
+      break;
+    case "all":
+      UpdatesListener.checkUpdates();
+      break;
+    case "one":
+      UpdatesListener.getLastUpdate();
+      break;
+    case "stop":
+      UpdatesListener.stop();
+      break;
+  }
+});
 
-const DB: IDataBase = new DataBase(process.env.OFFLINE_DB);
-const UpdatesListener = new Listener(DB);
+async function updateHandler(
+  updates: APITypes.VolumeUpdates.Content | APITypes.VolumeUpdates.Content[]
+) {
+  updates = updates instanceof Array ? updates : [updates];
 
-function setSettings() {
-  const args = process.argv
-    .filter((e) => {
-      return e.startsWith("--");
-    })
-    .map((value) => {
-      const o = {
-        name: value.match(/(?<=--)[\w-]+/)?.shift(),
-        value: value.match(/(?<==).+/)?.shift(),
-      };
+  for (const u of updates) {
+    if (!u) continue;
 
-      return o;
-    });
+    try {
+      const time = DB.getTime();
 
-  for (const arg of new Set(args).values()) {
-    switch (arg.name) {
-      case "no-db":
-        if (!arg.value) throw new Error("There are no args for NoDB call");
+      if (!time) throw new Error("SL ERROR: BAD TIME --- DROP UPDATE");
 
-        let time: number = new Date().getTime();
+      const title = new Update(u, time);
 
-        const days = arg.value.match(/(\d+)days/);
-        const hours = arg.value.match(/(\d+)hours/);
+      const message = await sendUpdate(title);
 
-        if (days || hours) {
-          if (days) {
-            time -= new Date(0).setUTCHours(parseInt(days[1], 10) * 24);
-          }
+      editMessage(message.id, title);
 
-          if (hours) {
-            time -= new Date(0).setUTCHours(parseInt(hours[1], 10));
-          }
-        } else {
-          time = parseInt(arg.value, 10);
-        }
-
-        process.env.OFFLINE_DB = "" + time;
-
-        break;
-      case "long":
-        process.env.API_LOOPING = "ALLOW_API_LOOPING";
-        break;
-      case "last":
-        process.env.ONLY_ONE_POST = "ONLY_ONE_POST";
-        process.env.OFFLINE_DB = "" + new Date().getTime();
+      DB.setTime(new Date(u.showTime));
+    } catch (e) {
+      console.error(e);
     }
   }
 }
 
-UpdatesListener.on("update", updateHandler);
-
-UpdatesListener.start();
-
-async function updateHandler(u: APITypes.VolumeUpdates.Content) {
-  try {
-    const time = await DB.getSavedTime();
-
-    if (!time) throw new Error("SL ERROR: NULLABLE TIME --- DROP UPDATE");
-
-    const title = new Update(u, time);
-
-    const message = await sendUpdate(title);
-
-    if (process.env.ONLY_ONE_POST === "ONLY_ONE_POST") process.exit();
-
-    editMessage(message.id, title);
-
-    DB.saveTime(new Date(u?.showTime).getTime());
-  } catch (e) {
-    console.error(e);
-  }
-}
-
 async function sendUpdate(title: Update): Promise<Discord.Message> {
-  if (process.env.NODE_ENV === "DEBUG" || process.env.NODE_ENV === "LOCAL")
-    hook = new Discord.WebhookClient(
-      process.env.HOOK_CAPTAINHOOK_ID as string,
-      process.env.HOOK_CAPTAINHOOK_TOKEN as string
-    );
-  else
-    hook = new Discord.WebhookClient(
-      process.env.HOOK_RURA_ID as string,
-      process.env.HOOK_RURA_TOKEN as string
-    );
-
   const update = await title.createUpdate();
   const text = update.toString();
   const imgBuffer = await update.getCover();
