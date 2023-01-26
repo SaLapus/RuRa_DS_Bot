@@ -7,10 +7,11 @@ import { Action as UpdatesAction } from "./updates/types";
 export interface AppOptions {
   name: string;
   id?: number;
+  mode?: string;
   args?: AppAction;
 }
 
-interface Application {
+export interface Application {
   id: number;
   type: string;
   app: child_process.ChildProcess;
@@ -20,31 +21,20 @@ export interface AppAction {
   type: UpdatesAction | "stop";
 }
 
+let running = 0;
+
 class Manager {
   Apps: Map<number, Application> = new Map();
-  private running = 0;
+  availableApps: Promise<string[]>;
 
   constructor() {
-    // if (app === "nothing") {
-    //   console.log("No AddOns was on");
-    //   return;
-    // }
+    this.availableApps = fs.readdir("./src/add-ons", { withFileTypes: true }).then((f) => {
+      return f.filter((e) => e.isDirectory()).map((d) => d.name);
+    });
 
-    // fs.readdir("./add-ons", { withFileTypes: true })
-    //   .then((f) => {
-    //     const files = f
-    //       .filter((e) => e.isDirectory())
-    //       .filter((e) => !exeption.some((name) => name === e.name));
-
-    //     console.log(files);
-
-    //     files.forEach((file) => {
-    //       this.startApp({ name: file.name });
-    //     });
-    //   })
-    //   .catch((e) => {
-    //     console.error(e);
-    //   });
+    this.availableApps.catch((e) => {
+      console.error(e);
+    });
   }
 
   async startApp({ name: type, args }: AppOptions): Promise<boolean> {
@@ -64,7 +54,7 @@ class Manager {
         cwd: path.resolve(__dirname, type),
         env: Object.assign(Object.create(process.env), { CHILD_ENV_PATH: childConfigPath }),
       });
-      const id = this.running++;
+      const id = running++;
 
       App.stdout?.on("data", (data) => {
         console.log(`OUT in ${type.toUpperCase()}: ${data}`);
@@ -104,7 +94,7 @@ class Manager {
 
       const info = this.Apps.get(id) as Application;
 
-      this.running--;
+      running--;
       this.Apps.delete(id);
 
       return Promise.resolve({ type: info.type, id: info.id });
@@ -127,5 +117,5 @@ class Manager {
     return text.trim();
   }
 }
-
-export default Manager;
+const manager = new Manager();
+export default manager;

@@ -1,19 +1,35 @@
 import * as Discord from "discord.js";
+import { Events, GatewayIntentBits } from "discord.js";
 import * as dotenv from "dotenv";
 
-import Manager, { AppAction, AppOptions } from "./add-ons/manager";
+import manager, { AppAction, AppOptions } from "./add-ons/manager";
+import startEmojiDialog from "./dialog";
 
 dotenv.config({ path: "./config/.env" });
 
-const manager = new Manager();
 // "all",
 // ["twitter"] /*названия модулей, которые не планируются включать*/
 
-const Bot = new Discord.Client();
+const Bot = new Discord.Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.GuildMessageReactions,
 
-Bot.on("ready", () => {
+    GatewayIntentBits.MessageContent,
+  ],
+});
+
+Bot.on(Events.ClientReady, (client) => {
   console.log(`Test Logged in as ${Bot.user?.tag}!`);
   console.log("NODE_ENV: ", process.env.NODE_ENV);
+
+  manager.startApp({
+    name: "updates",
+    args: {
+      type: "one" ,
+    },
+  });
 
   manager.startApp({
     name: "updates",
@@ -27,108 +43,53 @@ Bot.on("ready", () => {
   });
 });
 
-// Bot.on("message", async (message: Discord.Message) => {
-//   if (message.author.id !== process.env.AUTHOR_ID) return;
+Bot.on(Events.MessageCreate, async (message: Discord.Message) => {
+  if (!message) return;
 
-//   if (!message.content.startsWith("!")) return;
+  if (message.author.id !== process.env.AUTHOR_ID) return;
 
-//   const args: string[] = message.content.split(" ").filter((arg) => arg);
+  if (!message.content.startsWith("!start")) return;
 
-//   if (args.length < 2) {
-//     message.reply("No args");
-//     return;
-//   }
+  const a = await startEmojiDialog(message);
 
-//   const command = {
-//     worker: args.shift(),
-//     action: args.shift(),
-//     name: args.shift(),
-//     arg: args.shift()
-//   };
-
-//   switch (command.worker) {
-//     case "!app":
-//       break;
-//     case "!test":
-//       process.env.NODE_ENV = "DEBUG";
-//       break;
-//     case "!local":
-//       if (process.env.NODE_ENV !== "LOCAL") return;
-//       break;
-//     default:
-//       return;
-//   }
-
-//   switch (command.action) {
-//     case "start":
-//       if (!command.name) {
-//         message.reply("No args");
-//         return;
-//       }
-
-//       const app: AppOptions = {
-//         name: command.name,
-//         args: command.arg as unknown as AppAction, // сделать нормально
-//       };
-
-//       const started = await manager.startApp(app);
-//       if (started) message.reply(`${app.name.toUpperCase()}: start`);
-//       break;
-
-//     case "stop":
-//       const id = parseInt(Object.getOwnPropertyDescriptor(parsedArgs, "id")?.value);
-//       const stopedApp = await manager.stopApp(id);
-
-//       if (stopedApp) message.reply(`${stopedApp.type.toUpperCase()}: stop`);
-//       else {
-//         message.reply(`Stop... But what should I stop?..`);
-//         console.log(
-//           `${command.name?.toUpperCase()}: Unknown name of app or this app is not running.`
-//         );
-//       }
-//       break;
-
-//     case "show":
-//       message.reply(manager.showApps());
-//       break;
-//   }
-// });
+  console.log(a);
+});
 
 Bot.login(process.env.BOT_BORIS_TOKEN);
 
-const RuRaColor = new Discord.Client();
+// const RuRaColor = new Discord.Client({intents: GatewayIntentBits.Guilds});
 
-RuRaColor.on("message", async (message: Discord.Message) => {
-  if (message.channel.id !== "800044270370684958") return;
+// RuRaColor.on("message", async (message: Discord.Message) => {
+//   if (message.channel.id !== "800044270370684958") return;
 
-  const emojis = [message.guild?.emojis.cache.get("248177959192494080"), "❤", "🔥"];
+  // const emojis = [message.guild?.emojis.cache.get("248177959192494080"), "❤", "🔥"];
 
-  if (message.content.includes("arknarok"))
-    emojis.splice(1, 0, message.guild?.emojis.cache.get("324253416870117386"));
+//   if (message.content.includes("arknarok"))
+//     emojis.splice(1, 0, message.guild?.emojis.cache.get("324253416870117386"));
 
-  const emojisPromises = emojis
-    .filter((e) => e !== undefined)
-    .map((e) => message.react(e as string | Discord.GuildEmoji));
-  Promise.all(emojisPromises)
-    .then((es) => {
-      console.log(es.map((e) => e.emoji.name).join("  "));
-    })
-    .catch(console.error);
-});
+//   const emojisPromises = emojis
+//     .filter((e) => e !== undefined)
+//     .map((e) => message.react(e as string | Discord.GuildEmoji));
+//   Promise.all(emojisPromises)
+//     .then((es) => {
+//       console.log(es.map((e) => e.emoji.name).join("  "));
+//     })
+//     .catch(console.error);
+// });
 
-RuRaColor.on("message", (message) => {
-  // color: Bad_Boy 247121681133469696 Sun Jun 27 2021 17:34:55 GMT+0000 (Coordinated Universal Time)
-  console.log(
-    `${(message.channel as Discord.TextChannel).name.toUpperCase()} -> ${message.author.username} ${
-      message.createdAt.getUTCHours() + 3
-    }:${message.createdAt.getUTCMinutes()}\t${message.channel.id}${
-      message.channel.id === "247121681133469696"
-        ? `
-      ${message.content}
-      --------------------------`
-        : ""
-    }`
-  );
-});
+// RuRaColor.on("message", (message) => {
+//   // color: Bad_Boy 247121681133469696 Sun Jun 27 2021 17:34:55 GMT+0000 (Coordinated Universal Time)
+//   console.log(
+//     `${(message.channel as Discord.TextChannel).name.toUpperCase()} -> ${message.author.username} ${
+//       message.createdAt.getUTCHours() + 3
+//     }:${message.createdAt.getUTCMinutes()}\t${message.channel.id}${
+//       message.channel.id === "247121681133469696"
+//         ? `
+//       ${message.content}
+//       --------------------------`
+//         : ""
+//     }`
+//   );
+// });
 
-RuRaColor.login(process.env.BOT_RURACOLOR_TOKEN);
+// RuRaColor.login(process.env.BOT_RURACOLOR_TOKEN);
