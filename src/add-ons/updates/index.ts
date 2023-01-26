@@ -13,10 +13,10 @@ import getDB from "./modules/db";
 import Listener from "./modules/sender/listener";
 import Update from "./modules/sender/update";
 
-const hook: Discord.WebhookClient = new Discord.WebhookClient(
-  process.env.HOOK_ID as string,
-  process.env.HOOK_TOKEN as string
-);
+const hook: Discord.WebhookClient = new Discord.WebhookClient({
+  id: process.env.HOOK_ID as string,
+  token: process.env.HOOK_TOKEN as string,
+});
 
 const DB: IJSONStorage = getDB();
 const UpdatesListener = new Listener();
@@ -67,12 +67,12 @@ async function updateHandler(
   }
 }
 
-async function sendUpdate(title: Update): Promise<Discord.Message> {
+async function sendUpdate(title: Update): Promise<Discord.APIMessage> {
   const update = await title.createUpdate();
   const text = update.toString();
   const imgBuffer = await update.getCover();
 
-  return await hook.send(text, new Discord.MessageAttachment(imgBuffer));
+  return await hook.send({ content: text, files: [imgBuffer] });
 }
 
 function editMessage(messageID: string, title: Update) {
