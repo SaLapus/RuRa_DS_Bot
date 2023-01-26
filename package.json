@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "jest"
+    "test": "jest",
+    "debug": "node -r ts-node/register --no-warnings .\\src\\bot.ts",
+    "production": "node -r ts-node/register --no-warnings .\\src\\bot.ts"
   },
   "jest": {
     "setupFiles": [
@@ -27,7 +29,7 @@
   },
   "dependencies": {
     "@types/needle": "^2.5.1",
-    "discord.js": "^12.5.1",
+    "discord.js": "^14.7.1",
     "dotenv": "^10.0.0",
     "needle": "^2.6.0",
     "ts-node": "^10.9.1",
