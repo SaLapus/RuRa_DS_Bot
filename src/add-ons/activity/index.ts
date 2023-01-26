@@ -1,15 +1,21 @@
-import Discord from "discord.js";
+import Discord, { GatewayIntentBits } from "discord.js";
 
-const Bot = new Discord.Client();
+const Bot = new Discord.Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.GuildMessageReactions,
+
+    GatewayIntentBits.MessageContent,
+  ],
+});
 
 Bot.on("ready", () => {
-  console.log(`Logged in fork as ${Bot.user?.tag}!`);
+  console.log(`Logged in as ${Bot.user?.tag}!`);
   setRandActivity();
 });
 
-Bot.login(process.env.BOT_RURACOLOR_TOKEN).then((log) => {
-  console.log("LOGIN: ", log);
-});
+Bot.login(process.env.BOT_RURACOLOR_TOKEN);
 
 function setRandActivity() {
   const Activities = (name: string | undefined): Discord.ActivityOptions => {
@@ -18,30 +24,24 @@ function setRandActivity() {
     console.log("member: ", name, "name: ", name);
 
     const acts: Discord.ActivityOptions[] = [
-      { name: `как ${name} пьет пиво.`, type: "CUSTOM_STATUS" },
-      { name: `спам орехусами с ${name}.`, type: "CUSTOM_STATUS" },
-      { name: `покрас колора c  ${name}.`, type: "CUSTOM_STATUS" },
-      { name: `слак с ${name}.`, type: "CUSTOM_STATUS" },
-      { name: `жалобы от ${name}.`, type: "CUSTOM_STATUS" },
-      { name: ` ${name}. Страшно.`, type: "CUSTOM_STATUS" },
+      { name: `как ${name} пьет пиво.`, type: Discord.ActivityType.Watching },
+      { name: `спам орехусами с ${name}.`, type: Discord.ActivityType.Playing },
+      { name: `покрас колора c  ${name}.`, type: Discord.ActivityType.Streaming },
+      { name: `слак с ${name}.`, type: Discord.ActivityType.Playing },
+      { name: `жалобы от ${name}.`, type: Discord.ActivityType.Listening },
+      { name: ` ${name}. Страшно.`, type: Discord.ActivityType.Listening },
     ];
 
     return acts[getRandomInt(acts.length)];
   };
 
-  Bot?.user
-    ?.setActivity(Activities(getRandomTag()))
-    .then((presence) => console.log(`Activity set to ${presence.activities[0].name}`))
-    .catch(console.error);
+  const presence = Bot?.user?.setActivity(Activities(getRandomTag()));
+  console.log(`Activity set to ${presence?.activities[0].name}`);
 
-  setInterval(
-    () =>
-      Bot?.user
-        ?.setActivity(Activities(getRandomTag()))
-        .then((presence) => console.log(`Activity set to ${presence.activities[0].name}`))
-        .catch(console.error),
-    10 * 60 * 1000
-  );
+  setInterval(() => {
+    const presence = Bot?.user?.setActivity(Activities(getRandomTag()));
+    console.log(`Activity set to ${presence?.activities[0].name}`);
+  }, 10 * 60 * 1000);
 }
 
 function getRandomTag() {
@@ -52,21 +52,21 @@ function getRandomTag() {
     console.log("GUILD NAME: ", guild?.name);
 
     const channel = guild?.channels.cache.get("703340270724579338");
-    const member = guild?.members.cache.get("711920772834263122");
 
-    console.log(member?.permissions.toArray());
-
-    const membersToMention = channel?.members.clone();
+    const membersToMention = (
+      channel?.members as Discord.Collection<string, Discord.GuildMember> | undefined
+    )?.clone();
     membersToMention?.delete("711920772834263122");
 
-    console.log(membersToMention?.array().map((e) => e.user));
+    if (membersToMention) console.log([...membersToMention.values()].map((e) => e.user));
 
     const tag = membersToMention?.random()?.user?.tag;
 
     if (tag) name = fixTagtoName(tag);
-    else throw new Error("NO TAG TO SET ACTIVITY");
+    else throw new Error("NO TAG TO SET ACTIVITY <" + tag + ">");
   } catch (e) {
-    console.log(e);
+    if (e instanceof Error) console.log(e.message);
+    else console.log(e);
   }
 
   return name;
