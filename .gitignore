@@ -1,11 +1,15 @@
 node_modules
 
+.vscode
 js
 tests
 leha_hook
+config
 
 env.js
 .prettierrc.json
 .eslintrc.json
 .env
+package-lock.json
+storage.json
 package-lock.json
